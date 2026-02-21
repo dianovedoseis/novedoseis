@@ -84,3 +84,13 @@ if (dvdGif) {
 
     dvdGif.complete ? animate() : dvdGif.addEventListener('load', animate);
 }
+
+const playerToggle = document.getElementById('player-toggle');
+const playerContent = document.getElementById('player-content');
+
+if (playerToggle && playerContent) {
+    playerToggle.addEventListener('click', () => {
+        playerContent.classList.toggle('is-active');
+        playerToggle.querySelector('.icon').innerText = playerContent.classList.contains('is-active') ? '✕' : '🎵';
+    });
+}
