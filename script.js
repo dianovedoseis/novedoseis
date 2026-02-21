@@ -41,7 +41,7 @@ const openVideo = (url, titleText, kickerText = 'Atenção') => {
     if (!videoModal || !launchVideo) return;
     const modalTitle = document.getElementById('video-modal-title');
     const modalKicker = document.querySelector('.video-modal-kicker');
-    
+
     if (modalTitle) modalTitle.innerText = titleText;
     if (modalKicker) modalKicker.innerText = kickerText;
     launchVideo.src = url;
@@ -73,104 +73,98 @@ if (abyssTrigger) {
 closeModalControls.forEach(el => el.addEventListener('click', closeVideoModal));
 
 if (badgeRunawayButton && badgeButtonZone) {
-    const centerRunawayButton = () => {
-    const container = document.querySelector('.container');
-    if (!container || !badgeRunawayButton) return;
-    badgeRunawayButton.style.transform = 'none';
-    const rect = container.getBoundingClientRect();
-    const btnWidth = badgeRunawayButton.offsetWidth;
-    const btnHeight = badgeRunawayButton.offsetHeight;
-    let centerX = rect.left + (rect.width / 2) - (btnWidth / 2);
-    let positionY = rect.bottom + 15;
-    centerX = Math.max(10, Math.min(centerX, window.innerWidth - btnWidth - 10));
-    if (positionY + btnHeight > window.innerHeight) {
-        positionY = rect.top - btnHeight - 15; 
-    }
+    const BUTTON_PADDING = 8;
+    const ESCAPE_DISTANCE = 72;
+    const DETECTION_RADIUS = 120;
+    const INITIAL_FREEZE_MS = 800;
+    let x = 0;
+    let y = 0;
+    let canRunAway = false;
 
-    badgeRunawayButton.style.left = `${centerX}px`;
-    badgeRunawayButton.style.top = `${positionY}px`;
-};
-
-    const moveRunawayButton = () => {
-        const zoneWidth = window.innerWidth;
-        const zoneHeight = window.innerHeight;
-        const buttonWidth = badgeRunawayButton.offsetWidth;
-        const buttonHeight = badgeRunawayButton.offsetHeight;
-        const safeX = Math.max(6, zoneWidth - buttonWidth - 6);
-        const safeY = Math.max(6, zoneHeight - buttonHeight - 6);
-        const nextX = Math.floor(Math.random() * safeX);
-        const nextY = Math.floor(Math.random() * safeY);
-
-        badgeRunawayButton.style.transform = 'none';
-        badgeRunawayButton.style.left = `${nextX}px`;
-        badgeRunawayButton.style.top = `${nextY}px`;
+    const applyPosition = () => {
+        badgeRunawayButton.style.left = `${x}px`;
+        badgeRunawayButton.style.top = `${y}px`;
     };
 
-    const shouldRunAway = () => Math.random() > 0.2;
-    const detectPointer = (event) => {
-        if (!shouldRunAway()) return;
+    const keepInsideZone = () => {
+        const maxX = badgeButtonZone.clientWidth - badgeRunawayButton.offsetWidth - BUTTON_PADDING;
+        const maxY = badgeButtonZone.clientHeight - badgeRunawayButton.offsetHeight - BUTTON_PADDING;
+        x = Math.max(BUTTON_PADDING, Math.min(x, Math.max(BUTTON_PADDING, maxX)));
+        y = Math.max(BUTTON_PADDING, Math.min(y, Math.max(BUTTON_PADDING, maxY)));
+    };
 
-        const pointerX = event.touches ? event.touches[0].clientX : event.clientX;
-        const pointerY = event.touches ? event.touches[0].clientY : event.clientY;
-        if (typeof pointerX !== 'number' || typeof pointerY !== 'number') return;
+    const placeAtCenter = () => {
+        x = (badgeButtonZone.clientWidth - badgeRunawayButton.offsetWidth) / 2;
+        y = (badgeButtonZone.clientHeight - badgeRunawayButton.offsetHeight) / 2;
+        keepInsideZone();
+        applyPosition();
+    };
 
+    const moveRunawayButton = (pointerX, pointerY) => {
+        if (!canRunAway) return;
         const rect = badgeRunawayButton.getBoundingClientRect();
         const centerX = rect.left + (rect.width / 2);
         const centerY = rect.top + (rect.height / 2);
-        const distance = Math.hypot(pointerX - centerX, pointerY - centerY);
+        const deltaX = centerX - pointerX;
+        const deltaY = centerY - pointerY;
+        const magnitude = Math.hypot(deltaX, deltaY) || 1;
+        x += (deltaX / magnitude) * ESCAPE_DISTANCE;
+        y += (deltaY / magnitude) * ESCAPE_DISTANCE;
+        keepInsideZone();
+        applyPosition();
+    };
 
-        if (distance < 130) {
-            moveRunawayButton();
+    const detectPointer = (event) => {
+        const pointerX = event.touches ? event.touches[0].clientX : event.clientX;
+        const pointerY = event.touches ? event.touches[0].clientY : event.clientY;
+        if (typeof pointerX !== 'number' || typeof pointerY !== 'number') return;
+        const rect = badgeRunawayButton.getBoundingClientRect();
+        const centerX = rect.left + (rect.width / 2);
+        const centerY = rect.top + (rect.height / 2);
+        if (Math.hypot(pointerX - centerX, pointerY - centerY) < DETECTION_RADIUS) {
+            moveRunawayButton(pointerX, pointerY);
         }
     };
 
-    badgeRunawayButton.addEventListener('mouseenter', moveRunawayButton);
-    badgeRunawayButton.addEventListener('pointerdown', (event) => {
-        if (shouldRunAway()) {
-            event.preventDefault();
-            moveRunawayButton();
-        }
+    badgeButtonZone.addEventListener('mousemove', detectPointer);
+    badgeButtonZone.addEventListener('touchmove', detectPointer, { passive: true });
+    badgeRunawayButton.addEventListener('mouseenter', (e) => moveRunawayButton(e.clientX, e.clientY));
+    badgeRunawayButton.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        moveRunawayButton(e.clientX, e.clientY);
     });
 
-    document.addEventListener('mousemove', detectPointer);
-    document.addEventListener('touchmove', detectPointer, { passive: true });
+    window.addEventListener('load', placeAtCenter);
+    window.addEventListener('resize', placeAtCenter);
+    setTimeout(placeAtCenter, 100);
+    setTimeout(() => { canRunAway = true; }, INITIAL_FREEZE_MS);
 
     badgeRunawayButton.addEventListener('click', () => {
-        openVideo(
-            'https://www.youtube.com/embed/u-fOF9Wlpd8?autoplay=1',
-            'Parabéns, você resgatou um emblema!',
-            'Parabéns'
-        );
+        openVideo('https://www.youtube.com/embed/u-fOF9Wlpd8?autoplay=1', 'Parabéns, você resgatou um emblema!', 'Parabéns');
     });
-
-    centerRunawayButton();
-    window.addEventListener('resize', centerRunawayButton);
 }
 
 const dvdGif = document.getElementById('dvd-gif');
 if (dvdGif) {
-    let x = 0, y = 0, vx = 1.9, vy = 1.45;
-
+    let dx = 0, dy = 0, vx = 1.9, vy = 1.45;
     const animate = () => {
         const maxX = window.innerWidth - dvdGif.offsetWidth;
         const maxY = window.innerHeight - dvdGif.offsetHeight;
-        x += vx; y += vy;
-        if (x <= 0 || x >= maxX) vx *= -1;
-        if (y <= 0 || y >= maxY) vy *= -1;
-        dvdGif.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        dx += vx; dy += vy;
+        if (dx <= 0 || dx >= maxX) vx *= -1;
+        if (dy <= 0 || dy >= maxY) vy *= -1;
+        dvdGif.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
         requestAnimationFrame(animate);
     };
-
     dvdGif.complete ? animate() : dvdGif.addEventListener('load', animate);
 }
 
 const playerToggle = document.getElementById('player-toggle');
 const playerContent = document.getElementById('player-content');
-
 if (playerToggle && playerContent) {
     playerToggle.addEventListener('click', () => {
         playerContent.classList.toggle('is-active');
-        playerToggle.querySelector('.icon').innerText = playerContent.classList.contains('is-active') ? '✕' : '🎵';
+        playerToggle.querySelector('.icon').innerText = playerContent.classList.contains('is-active') ? 'X' : 'M';
     });
 }
 
@@ -181,10 +175,7 @@ document.addEventListener('keydown', event => {
         (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'J' || event.key === 'C'))
     ) {
         event.preventDefault();
-        
-
-        runJumpscare(); 
-        
+        runJumpscare();
         return false;
     }
 });
@@ -192,45 +183,35 @@ document.addEventListener('keydown', event => {
 const randomPhotoLayer = document.getElementById('random-photo-layer');
 const randomPhoto = document.getElementById('random-photo');
 const scareAudio = new Audio('https://www.myinstants.com/media/sounds/xenoverse-goku-noise.mp3');
-const fixedPhotoUrl = 'https://media.discordapp.net/attachments/1473740311519039673/1474872572771438793/ChatGPT_Image_21_de_fev._de_2026_17_56_37.png?ex=699b6d9f&is=699a1c1f&hm=05bba2b88c6dc7876c06490c9170f7510f0da4d4ea12a71dc3dfdd40b4ea8807&=&format=webp&quality=lossless&width=1376&height=917';
+const fixedPhotoUrl = 'https://cdn.discordapp.com/attachments/1473740311519039673/1474872572771438793/ChatGPT_Image_21_de_fev._de_2026_17_56_37.png?ex=699b6d9f&is=699a1c1f&hm=05bba2b88c6dc7876c06490c9170f7510f0da4d4ea12a71dc3dfdd40b4ea8807&';
 
 let scareCycles = 0;
 let scareEnabled = false;
-
 scareAudio.preload = 'auto';
 
 const setPhotoAtRandomCorner = () => {
     if (!randomPhoto) return;
-
-    const cornerPadding = 22 + Math.floor(Math.random() * 30);
-    const jitter = Math.floor(Math.random() * 28);
+    const cornerPadding = 30;
     const corners = [
-        { left: cornerPadding + jitter, top: cornerPadding + jitter },
-        { left: window.innerWidth - randomPhoto.offsetWidth - cornerPadding - jitter, top: cornerPadding + jitter },
-        { left: cornerPadding + jitter, top: window.innerHeight - randomPhoto.offsetHeight - cornerPadding - jitter },
-        { left: window.innerWidth - randomPhoto.offsetWidth - cornerPadding - jitter, top: window.innerHeight - randomPhoto.offsetHeight - cornerPadding - jitter }
+        { left: cornerPadding, top: cornerPadding },
+        { left: window.innerWidth - randomPhoto.offsetWidth - cornerPadding, top: cornerPadding },
+        { left: cornerPadding, top: window.innerHeight - randomPhoto.offsetHeight - cornerPadding },
+        { left: window.innerWidth - randomPhoto.offsetWidth - cornerPadding, top: window.innerHeight - randomPhoto.offsetHeight - cornerPadding }
     ];
-    const chosenCorner = corners[Math.floor(Math.random() * corners.length)];
-
-    randomPhoto.style.left = `${Math.max(8, chosenCorner.left)}px`;
-    randomPhoto.style.top = `${Math.max(8, chosenCorner.top)}px`;
+    const chosen = corners[Math.floor(Math.random() * corners.length)];
+    randomPhoto.style.left = `${chosen.left}px`;
+    randomPhoto.style.top = `${chosen.top}px`;
 };
 
 const runJumpscare = () => {
     if (!randomPhotoLayer || !randomPhoto) return;
-
     randomPhoto.src = fixedPhotoUrl;
     randomPhoto.style.left = '50%';
     randomPhoto.style.top = '50%';
     randomPhotoLayer.classList.add('is-visible', 'is-jumpscare');
     document.body.classList.add('screen-shake');
-
-    scareAudio.pause();
     scareAudio.currentTime = 0;
-    scareAudio.volume = 1;
-    scareAudio.playbackRate = 1.25;
     scareAudio.play().catch(() => {});
-
     setTimeout(() => {
         randomPhotoLayer.classList.remove('is-visible', 'is-jumpscare');
         document.body.classList.remove('screen-shake');
@@ -240,26 +221,18 @@ const runJumpscare = () => {
 
 const runScareCycle = () => {
     if (!randomPhotoLayer || !randomPhoto) return;
-
-    scareCycles += 1;
-
+    scareCycles++;
     if (scareCycles >= 5) {
         scareCycles = 0;
         runJumpscare();
         return;
     }
-
     randomPhoto.src = fixedPhotoUrl;
     randomPhotoLayer.classList.remove('is-jumpscare');
     setPhotoAtRandomCorner();
     randomPhotoLayer.classList.add('is-visible');
-
-    scareAudio.pause();
-    scareAudio.currentTime = 0;
-    scareAudio.volume = 0.55;
-    scareAudio.playbackRate = 1;
+    scareAudio.volume = 0.5;
     scareAudio.play().catch(() => {});
-
     setTimeout(() => {
         randomPhotoLayer.classList.remove('is-visible');
         scheduleScareCycle();
@@ -268,8 +241,7 @@ const runScareCycle = () => {
 
 const scheduleScareCycle = () => {
     if (!scareEnabled) return;
-    const nextDelay = 9000 + Math.floor(Math.random() * 12000);
-    setTimeout(runScareCycle, nextDelay);
+    setTimeout(runScareCycle, 9000 + Math.random() * 12000);
 };
 
 const enableScareFeature = () => {
@@ -280,3 +252,7 @@ const enableScareFeature = () => {
 
 document.addEventListener('click', enableScareFeature, { once: true });
 document.addEventListener('keydown', enableScareFeature, { once: true });
+
+document.addEventListener('contextmenu', event => {
+    event.preventDefault();
+});
