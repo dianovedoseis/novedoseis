@@ -94,3 +94,17 @@ if (playerToggle && playerContent) {
         playerToggle.querySelector('.icon').innerText = playerContent.classList.contains('is-active') ? '✕' : '🎵';
     });
 }
+
+document.addEventListener('contextmenu', event => event.preventDefault());
+
+document.addEventListener('keydown', event => {
+    if (
+        event.ctrlKey && (event.key === 'u' || event.key === 'U' || event.key === 's' || event.key === 'S') ||
+        event.key === 'F12' ||
+        (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'J' || event.key === 'C'))
+    ) {
+        event.preventDefault();
+        alert("O abismo protege seus segredos.");
+        return false;
+    }
+});
