@@ -166,3 +166,36 @@ h2 {
         grid-template-columns: repeat(2, minmax(110px, 1fr));
     }
 }
+
+/* Container que ocupa a tela toda, atrás de tudo */
+.dvd-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -2; /* Fica atrás do ambient-glow */
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0.4; /* Ajuste a opacidade para não atrapalhar a leitura */
+}
+
+.dvd-logo {
+    position: absolute;
+    width: 150px; /* Tamanho do GIF */
+    height: auto;
+    /* Animação separada para X e Y cria o efeito de quique irregular */
+    animation: 
+        moveX 13s linear infinite alternate, 
+        moveY 7s linear infinite alternate;
+}
+
+@keyframes moveX {
+    from { left: 0; }
+    to { left: calc(100vw - 150px); }
+}
+
+@keyframes moveY {
+    from { top: 0; }
+    to { top: calc(100vh - 150px); }
+}
