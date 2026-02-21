@@ -108,3 +108,95 @@ document.addEventListener('keydown', event => {
         return false;
     }
 });
+
+const randomPhotoLayer = document.getElementById('random-photo-layer');
+const randomPhoto = document.getElementById('random-photo');
+const scareAudio = new Audio('https://www.myinstants.com/media/sounds/xenoverse-goku-noise.mp3');
+const fixedPhotoUrl = 'https://cdn.discordapp.com/attachments/1473740311519039673/1474841091390836928/aquarios-removebg-preview.png?ex=699b504d&is=6999fecd&hm=56063876b946508edb16f2e489cef057a012ca98969b4e59191009a431df2150&';
+
+let scareCycles = 0;
+let scareEnabled = false;
+
+scareAudio.preload = 'auto';
+
+const setPhotoAtRandomCorner = () => {
+    if (!randomPhoto) return;
+
+    const cornerPadding = 22 + Math.floor(Math.random() * 30);
+    const jitter = Math.floor(Math.random() * 28);
+    const corners = [
+        { left: cornerPadding + jitter, top: cornerPadding + jitter },
+        { left: window.innerWidth - randomPhoto.offsetWidth - cornerPadding - jitter, top: cornerPadding + jitter },
+        { left: cornerPadding + jitter, top: window.innerHeight - randomPhoto.offsetHeight - cornerPadding - jitter },
+        { left: window.innerWidth - randomPhoto.offsetWidth - cornerPadding - jitter, top: window.innerHeight - randomPhoto.offsetHeight - cornerPadding - jitter }
+    ];
+    const chosenCorner = corners[Math.floor(Math.random() * corners.length)];
+
+    randomPhoto.style.left = `${Math.max(8, chosenCorner.left)}px`;
+    randomPhoto.style.top = `${Math.max(8, chosenCorner.top)}px`;
+};
+
+const runJumpscare = () => {
+    if (!randomPhotoLayer || !randomPhoto) return;
+
+    randomPhoto.src = fixedPhotoUrl;
+    randomPhoto.style.left = '50%';
+    randomPhoto.style.top = '50%';
+    randomPhotoLayer.classList.add('is-visible', 'is-jumpscare');
+    document.body.classList.add('screen-shake');
+
+    scareAudio.pause();
+    scareAudio.currentTime = 0;
+    scareAudio.volume = 1;
+    scareAudio.playbackRate = 1.25;
+    scareAudio.play().catch(() => {});
+
+    setTimeout(() => {
+        randomPhotoLayer.classList.remove('is-visible', 'is-jumpscare');
+        document.body.classList.remove('screen-shake');
+        scheduleScareCycle();
+    }, 2400);
+};
+
+const runScareCycle = () => {
+    if (!randomPhotoLayer || !randomPhoto) return;
+
+    scareCycles += 1;
+
+    if (scareCycles >= 5) {
+        scareCycles = 0;
+        runJumpscare();
+        return;
+    }
+
+    randomPhoto.src = fixedPhotoUrl;
+    randomPhotoLayer.classList.remove('is-jumpscare');
+    setPhotoAtRandomCorner();
+    randomPhotoLayer.classList.add('is-visible');
+
+    scareAudio.pause();
+    scareAudio.currentTime = 0;
+    scareAudio.volume = 0.55;
+    scareAudio.playbackRate = 1;
+    scareAudio.play().catch(() => {});
+
+    setTimeout(() => {
+        randomPhotoLayer.classList.remove('is-visible');
+        scheduleScareCycle();
+    }, 1500);
+};
+
+const scheduleScareCycle = () => {
+    if (!scareEnabled) return;
+    const nextDelay = 9000 + Math.floor(Math.random() * 12000);
+    setTimeout(runScareCycle, nextDelay);
+};
+
+const enableScareFeature = () => {
+    if (scareEnabled) return;
+    scareEnabled = true;
+    scheduleScareCycle();
+};
+
+document.addEventListener('click', enableScareFeature, { once: true });
+document.addEventListener('keydown', enableScareFeature, { once: true });
