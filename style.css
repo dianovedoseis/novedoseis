@@ -131,59 +131,25 @@ h2 {
 }
 
 #countdown {
-    position: relative;
     display: grid;
     grid-template-columns: repeat(4, minmax(95px, 1fr));
     gap: 0.9rem;
-    padding: 0.9rem;
-    border-radius: 18px;
-    overflow: hidden;
-    isolation: isolate;
-}
-
-#countdown::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image: url('https://cdn.discordapp.com/attachments/1473740311519039673/1474872572771438793/ChatGPT_Image_21_de_fev._de_2026_17_56_37.png?ex=699b6d9f&is=699a1c1f&hm=05bba2b88c6dc7876c06490c9170f7510f0da4d4ea12a71dc3dfdd40b4ea8807&');
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: cover;
-    opacity: 0.14;
-    filter: blur(7px);
-    transform: scale(1.08);
-}
-
-#countdown > * {
-    position: relative;
-    z-index: 1;
 }
 
 .badge-zone {
-    position: relative;
-    width: 100%;
-    height: clamp(74px, 12vh, 110px);
-    margin-top: 1.2rem;
-    padding: 0 0.8rem;
-    z-index: 6;
-    overflow: hidden;
-}
-
-#runaway-bounds {
-    position: fixed;
+    position: absolute; 
     inset: 0;
-    z-index: 5;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
     pointer-events: none;
-    background: transparent;
+    z-index: 6;
+    overflow: visible; 
 }
 
 .runaway-button {
-    position: absolute;
-    left: 0;
-    top: 0;
-    max-width: min(100%, 420px);
+    position: fixed;
     z-index: 999;
     border: 1px solid rgba(255, 255, 255, 0.38);
     border-radius: 999px;
@@ -194,11 +160,11 @@ h2 {
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    white-space: normal;
+    white-space: nowrap;
     padding: 0.68rem 1rem;
     cursor: pointer;
     box-shadow: 0 10px 24px rgba(255, 59, 31, 0.35);
-    transition: box-shadow 180ms ease, filter 180ms ease;
+    transition: left 150ms ease, top 150ms ease;
     pointer-events: auto;
 }
 
@@ -368,14 +334,14 @@ h2 {
 }
 
 #abyss-trigger {
-    color: inherit;
+    color: inherit; 
     transition: color 0.3s ease, text-shadow 0.3s ease;
     cursor: pointer;
 }
 
 #abyss-trigger:hover {
-    color: var(--accent);
-    text-shadow: 0 0 20px rgba(255, 59, 31, 0.6);
+    color: var(--accent); 
+    text-shadow: 0 0 20px rgba(255, 59, 31, 0.6); 
 }
 
 .music-player-container {
@@ -419,7 +385,7 @@ h2 {
     border: 1px solid var(--line);
     background: var(--bg-panel);
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    display: none;
+    display: none; 
     animation: slide-up 0.4s ease-out;
 }
 
@@ -490,4 +456,3 @@ h2 {
         width: calc(100vw - 40px);
     }
 }
-
