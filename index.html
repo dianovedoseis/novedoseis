@@ -1,69 +1,44 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contador Regressivo</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f5f5f5;
-      text-align: center;
-    }
-    .contador {
-      background: #4CAF50;
-      color: white;
-      padding: 30px;
-      border-radius: 15px;
-      font-size: 2rem;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    }
-    .contador span {
-      display: block;
-      font-size: 3rem;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHADOWS OF THE ABYSS</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="contador">
-    <div>Faltam:</div>
-    <span id="dias">0</span> dias
-    <span id="horas">0</span> horas
-    <span id="minutos">0</span> minutos
-    <span id="segundos">0</span> segundos
-  </div>
+    <div class="ambient-glow ambient-glow-left"></div>
+    <div class="ambient-glow ambient-glow-right"></div>
 
-  <script>
-    // Data final do contador: 09/06/2026
-    const dataFinal = new Date("June 9, 2026 00:00:00").getTime();
+    <main class="container">
+        <p class="eyebrow">Experiencia Interativa</p>
+        <h1>SHADOWS OF THE ABYSS</h1>
+        <h2>em breve</h2>
 
-    function atualizarContador() {
-      const agora = new Date().getTime();
-      const distancia = dataFinal - agora;
+        <a class="launch-link" href="#" aria-label="Acompanhar lancamento">
+            Acompanhar lancamento
+        </a>
 
-      if (distancia < 0) {
-        document.querySelector(".contador").innerHTML = "O evento já começou!";
-        clearInterval(intervalo);
-        return;
-      }
+        <div id="countdown">
+            <div class="time">
+                <span id="days"></span>
+                <p>Dias</p>
+            </div>
+            <div class="time">
+                <span id="hours"></span>
+                <p>Horas</p>
+            </div>
+            <div class="time">
+                <span id="minutes"></span>
+                <p>Minutos</p>
+            </div>
+            <div class="time">
+                <span id="seconds"></span>
+                <p>Segundos</p>
+            </div>
+        </div>
+    </main>
 
-      const dias = Math.floor(distancia / (1000 * 60 * 60 * 24));
-      const horas = Math.floor((distancia % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutos = Math.floor((distancia % (1000 * 60 * 60)) / (1000 * 60));
-      const segundos = Math.floor((distancia % (1000 * 60)) / 1000);
-
-      document.getElementById("dias").innerText = dias;
-      document.getElementById("horas").innerText = horas;
-      document.getElementById("minutos").innerText = minutos;
-      document.getElementById("segundos").innerText = segundos;
-    }
-
-    const intervalo = setInterval(atualizarContador, 1000);
-    atualizarContador();
-  </script>
+    <script src="script.js"></script>
 </body>
 </html>
