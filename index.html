@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -7,18 +7,24 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="dvd-container">
-    <img src="https://cdn.discordapp.com/attachments/1325501562105106484/1413949848172105949/0906_12.gif?ex=699a9e29&is=69994ca9&hm=80530eb150dc30745a343cdc3fb6e0212e6c4be145924d3166a3f235bbbfeccb&" class="dvd-logo" alt="Abyss Gift">
-</div>
+    <img
+        id="dvd-gif"
+        src="https://cdn.discordapp.com/attachments/1325501562105106484/1413949848172105949/0906_12.gif?ex=699a9e29&is=69994ca9&hm=80530eb150dc30745a343cdc3fb6e0212e6c4be145924d3166a3f235bbbfeccb&"
+        alt=""
+        aria-hidden="true"
+        loading="eager"
+        decoding="async"
+    >
+
     <div class="ambient-glow ambient-glow-left"></div>
     <div class="ambient-glow ambient-glow-right"></div>
 
     <main class="container">
         <p class="eyebrow">Experiencia Interativa</p>
-        <h1>SHADOWS OF THE ABYSS</h1>
+        <h1>SHADOWS OF THE <span id="abyss-trigger" style="cursor: pointer;">ABYSS</span></h1>
         <h2>em breve</h2>
 
-        <a class="launch-link" href="https://youtu.be/fC7oUOUEEi4" aria-label="Acompanhar lancamento">
+        <a class="launch-link" href="#" aria-label="Acompanhar lancamento">
             Acompanhar lancamento
         </a>
 
@@ -41,6 +47,32 @@
             </div>
         </div>
     </main>
+
+    <section class="video-modal" id="video-modal" aria-hidden="true">
+        <div class="video-modal-backdrop" data-close-modal></div>
+        <div
+            class="video-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="video-modal-title"
+        >
+            <button class="video-modal-close" type="button" data-close-modal aria-label="Fechar">
+                x
+            </button>
+            <p class="video-modal-kicker">Atenção</p>
+            <h3 id="video-modal-title">A equipe de desvenvolmento e arte esta trabalhando.</h3>
+            <div class="video-frame-wrap">
+                <iframe
+                    id="launch-video"
+                    title="Teaser de desenvolvimento"
+                    src=""
+                    allow="autoplay; encrypted-media; picture-in-picture; web-share"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allowfullscreen
+                ></iframe>
+            </div>
+        </div>
+    </section>
 
     <script src="script.js"></script>
 </body>
