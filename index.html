@@ -23,7 +23,7 @@
 
     <main class="container">
         <p class="eyebrow">Experiencia Interativa</p>
-        <h1>SHADOWS OF THE <span id="abyss-trigger" style="cursor: pointer;">ABYSS</span></h1>
+        <h1>SH<span id="shadows-a-trigger" class="shadows-a" role="button" tabindex="0" aria-label="Abrir alerta">A</span>DOWS <span class="title-o-wrap"><span id="chess-trigger" class="title-o" role="button" tabindex="0" aria-label="Abrir xadrez">O</span>F</span> THE <span id="abyss-trigger" style="cursor: pointer;">ABYSS</span><button id="copyright-trigger" class="copyright-trigger" type="button" aria-label="Abrir pergaminho">©</button></h1>
         <h2>em breve</h2>
 
         <a class="launch-link" href="#" aria-label="Acompanhar lancamento">
@@ -99,14 +99,55 @@
         </div>
     </section>
 
+    <section class="chess-modal" id="chess-modal" aria-hidden="true">
+        <div class="chess-modal-backdrop" data-close-chess></div>
+        <div
+            class="chess-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chess-modal-title"
+        >
+            <button class="chess-modal-close" type="button" data-close-chess aria-label="Fechar">
+                x
+            </button>
+            <p class="chess-modal-kicker">Mini Jogo</p>
+            <h3 id="chess-modal-title">Xadrez</h3>
+            <p class="chess-status" id="chess-status">Vez das brancas</p>
+            <div class="chess-board" id="chess-board" aria-label="Tabuleiro de xadrez"></div>
+            <button class="chess-reset" id="chess-reset" type="button">Reiniciar partida</button>
+        </div>
+    </section>
+    
+    <section class="parchment-modal" id="parchment-modal" aria-hidden="true">
+        <div class="parchment-modal-backdrop" data-close-parchment></div>
+        <div class="parchment-scroll" role="dialog" aria-modal="true" aria-labelledby="parchment-text">
+            <button class="parchment-close" type="button" data-close-parchment aria-label="Fechar">x</button>
+            <p class="parchment-text" id="parchment-text"><span class="parchment-typing">100% oliginal</span></p>
+        </div>
+    </section>
+
+    <section class="warning-modal" id="warning-modal" aria-hidden="true">
+        <div class="warning-modal-backdrop"></div>
+        <div class="warning-modal-card" role="dialog" aria-modal="true" aria-labelledby="warning-title">
+            <img
+                class="warning-image"
+                src="https://cdn.discordapp.com/attachments/1473740311519039673/1475196855838183557/puts.png?ex=699c9ba2&is=699b4a22&hm=625b7981eb504f3f4472441eda3409196357cac44503ff01d37a5ed1cc860233&"
+                alt="Alerta"
+            >
+            <h3 id="warning-title">VOCÊ VIU DE MAIS</h3>
+            <p class="warning-countdown" id="warning-countdown">Fechando em 3...</p>
+        </div>
+    </section>
+
     <div id="random-photo-layer" aria-hidden="true">
         <img
             id="random-photo"
-            src="https://cdn.discordapp.com/attachments/1473740311519039673/1474872572771438793/ChatGPT_Image_21_de_fev._de_2026_17_56_37.png?ex=699b6d9f&is=699a1c1f&hm=05bba2b88c6dc7876c06490c9170f7510f0da4d4ea12a71dc3dfdd40b4ea8807&"
+            src="https://cdn.discordapp.com/attachments/1473740311519039673/1474856214067286107/download.png?ex=699b5e62&is=699a0ce2&hm=1a86ac614c8abb1c2dfa343a9e5eaefc5fd48f8a2e3edd7f6bf69197649caf71&"
             alt="Foto aleatoria"
         >
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="script.js"></script>
 </body>
 </html>

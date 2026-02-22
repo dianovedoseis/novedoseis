@@ -86,6 +86,18 @@ h1 {
     text-shadow: 0 0 30px rgba(255, 59, 31, 0.25);
 }
 
+.shadows-a {
+    cursor: pointer;
+    transition: color 170ms ease, text-shadow 170ms ease;
+}
+
+.shadows-a:hover,
+.shadows-a:focus-visible {
+    color: #ff2b2b;
+    text-shadow: 0 0 14px rgba(255, 43, 43, 0.8);
+    outline: none;
+}
+
 h2 {
     margin: 0 0 1.3rem;
     color: var(--text-soft);
@@ -162,13 +174,19 @@ h2 {
 }
 
 .badge-zone {
-    position: relative;
-    width: 100%;
-    height: clamp(74px, 12vh, 110px);
-    margin-top: 1.2rem;
-    padding: 0 0.8rem;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0.9rem;
+    border-radius: 18px;
+    border: 1px solid transparent;
+    background: transparent;
     z-index: 6;
     overflow: hidden;
+    pointer-events: none;
 }
 
 #runaway-bounds {
@@ -378,6 +396,483 @@ h2 {
     text-shadow: 0 0 20px rgba(255, 59, 31, 0.6);
 }
 
+.copyright-trigger {
+    margin-left: 0.2rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.65);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(0.5rem, 1.1vw, 0.72rem);
+    line-height: 1;
+    transform: translateY(-0.45em);
+    cursor: pointer;
+    transition: color 180ms ease, text-shadow 180ms ease;
+}
+
+.copyright-trigger:hover,
+.copyright-trigger:focus-visible {
+    color: #ffe9c7;
+    text-shadow: 0 0 10px rgba(255, 233, 199, 0.8);
+    outline: none;
+}
+
+.title-o-wrap {
+    display: inline-block;
+}
+
+.title-o {
+    color: #ffd08c;
+    cursor: pointer;
+    text-shadow: 0 0 12px rgba(255, 208, 140, 0.5);
+    transition: color 180ms ease, text-shadow 180ms ease, transform 180ms ease;
+}
+
+.title-o:hover,
+.title-o:focus-visible {
+    color: #fff4dc;
+    text-shadow: 0 0 20px rgba(255, 208, 140, 0.9);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.chess-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 12;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease;
+}
+
+.chess-modal.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.chess-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 2, 2, 0.76);
+    backdrop-filter: blur(6px);
+}
+
+.chess-modal-card {
+    position: relative;
+    width: min(620px, calc(100vw - 1.8rem));
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: linear-gradient(160deg, rgba(16, 16, 16, 0.96), rgba(7, 7, 7, 0.96));
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+    padding: clamp(1rem, 3vw, 1.4rem);
+    transform: translateY(12px) scale(0.98);
+    transition: transform 240ms ease;
+}
+
+.chess-modal.is-open .chess-modal-card {
+    transform: translateY(0) scale(1);
+}
+
+.chess-modal-close {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.chess-modal-kicker {
+    margin: 0 0 0.2rem;
+    color: var(--accent-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.72rem;
+}
+
+.chess-modal-card h3 {
+    margin: 0 0 0.7rem;
+    font-family: "Bebas Neue", sans-serif;
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    letter-spacing: 0.04em;
+}
+
+.chess-status {
+    margin: 0 0 0.8rem;
+    font-size: 0.9rem;
+    color: #f1d6b7;
+    letter-spacing: 0.04em;
+}
+
+.chess-board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    width: min(100%, clamp(280px, 72vmin, 540px));
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.chess-square {
+    display: grid;
+    place-items: center;
+    font-size: clamp(1.4rem, 4vw, 2.3rem);
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    line-height: 1;
+    user-select: none;
+    cursor: pointer;
+}
+
+.chess-square.light {
+    background: #f0d9b5;
+    color: #1f1a17;
+}
+
+.chess-square.dark {
+    background: #b58863;
+    color: #111;
+}
+
+.chess-square.is-selected {
+    box-shadow: inset 0 0 0 3px rgba(255, 82, 44, 0.95);
+}
+
+.chess-square.is-target {
+    box-shadow: inset 0 0 0 3px rgba(44, 196, 110, 0.95);
+}
+
+.chess-reset {
+    margin: 0.9rem auto 0;
+    display: block;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    color: #fff;
+    background: linear-gradient(120deg, #5a1208 0%, #c32a12 48%, #ff5837 100%);
+    padding: 0.62rem 1rem;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 0.76rem;
+}
+
+.parchment-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 13;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease;
+}
+
+.parchment-modal.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.parchment-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 2, 0, 0.72);
+    backdrop-filter: blur(5px);
+    opacity: 0;
+    transition: opacity 260ms ease;
+}
+
+.parchment-modal.is-open .parchment-modal-backdrop {
+    opacity: 1;
+}
+
+.parchment-scroll {
+    position: fixed;
+    left: var(--paper-start-x, 50vw);
+    top: var(--paper-start-y, 50vh);
+    width: min(92vw, 540px);
+    min-height: 180px;
+    border-radius: 12px;
+    border: 2px solid rgba(110, 78, 36, 0.68);
+    background:
+        radial-gradient(circle at 25% 15%, rgba(255, 249, 229, 0.85), transparent 42%),
+        linear-gradient(165deg, #f3dfb4 0%, #e8cf9d 45%, #ddbe84 100%);
+    box-shadow:
+        0 18px 45px rgba(0, 0, 0, 0.58),
+        inset 0 0 25px rgba(105, 73, 34, 0.32);
+    transform-origin: center;
+    transform: translate(-50%, -50%) translate(0, 0) scale(0.08) rotate(-14deg);
+    opacity: 0;
+    overflow: hidden;
+}
+
+.parchment-scroll::before,
+.parchment-scroll::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 14px;
+    background: linear-gradient(180deg, #c59656, #9a6f39);
+    border: 1px solid rgba(84, 55, 22, 0.45);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.parchment-scroll::before {
+    top: -8px;
+    border-radius: 999px;
+}
+
+.parchment-scroll::after {
+    bottom: -8px;
+    border-radius: 999px;
+}
+
+.parchment-modal.is-open .parchment-scroll {
+    animation:
+        parchment-flight 420ms cubic-bezier(0.16, 0.78, 0.2, 1) forwards,
+        parchment-unroll 540ms 370ms cubic-bezier(0.2, 0.92, 0.22, 1) forwards;
+}
+
+.parchment-close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.45rem;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(80, 57, 26, 0.45);
+    background: rgba(255, 255, 255, 0.25);
+    color: #50351a;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 6;
+    pointer-events: auto;
+}
+
+.parchment-text {
+    margin: 0;
+    min-height: 180px;
+    display: grid;
+    place-items: center;
+    color: #4d2f0f;
+    font-family: "Bebas Neue", sans-serif;
+    letter-spacing: 0.08em;
+    font-size: clamp(1.8rem, 7vw, 3.1rem);
+    text-transform: uppercase;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    transform: scale(0.9);
+    position: relative;
+}
+
+.parchment-modal.is-open .parchment-text {
+    animation: parchment-text-in 320ms 760ms ease-out forwards;
+}
+
+.parchment-typing {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: visible;
+    border-right: 2px solid rgba(88, 55, 22, 0.75);
+    filter: drop-shadow(0 0 0 rgba(255, 244, 210, 0));
+}
+
+.parchment-modal.is-open .parchment-typing {
+    animation:
+        parchment-caret 480ms 860ms step-end infinite,
+        parchment-glitter 1.2s 860ms ease-in-out infinite alternate;
+}
+
+.parchment-typing.is-typing {
+    border-right-color: rgba(88, 55, 22, 0.75);
+}
+
+.parchment-typing.is-complete {
+    border-right-color: transparent;
+}
+
+.parchment-text::after {
+    content: "";
+    position: absolute;
+    inset: 22% 10%;
+    pointer-events: none;
+    opacity: 0;
+    background:
+        radial-gradient(circle at 12% 40%, rgba(255, 245, 218, 0.9) 0 2px, transparent 3px),
+        radial-gradient(circle at 28% 62%, rgba(255, 232, 178, 0.85) 0 1.6px, transparent 2.8px),
+        radial-gradient(circle at 46% 35%, rgba(255, 250, 230, 0.85) 0 1.8px, transparent 3px),
+        radial-gradient(circle at 61% 60%, rgba(255, 241, 195, 0.88) 0 2px, transparent 3px),
+        radial-gradient(circle at 77% 38%, rgba(255, 247, 220, 0.8) 0 1.7px, transparent 2.8px),
+        radial-gradient(circle at 90% 56%, rgba(255, 237, 190, 0.85) 0 1.9px, transparent 3px);
+    mix-blend-mode: screen;
+}
+
+.parchment-modal.is-open .parchment-text::after {
+    animation: parchment-sparkles 1.3s 1.1s ease-in-out infinite;
+}
+
+.warning-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 14;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease;
+}
+
+.warning-modal.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.warning-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(6px);
+}
+
+.warning-modal-card {
+    position: relative;
+    width: min(86vw, 520px);
+    padding: clamp(0.7rem, 2vw, 1rem);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(6, 6, 6, 0.92);
+    box-shadow: 0 26px 70px rgba(0, 0, 0, 0.7);
+    transform: scale(0.92);
+    animation: warning-pop 240ms ease-out forwards;
+}
+
+.warning-image {
+    display: block;
+    width: 100%;
+    max-height: min(46vh, 320px);
+    height: auto;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.warning-modal-card h3 {
+    margin: 0.75rem 0 0.15rem;
+    text-align: center;
+    font-family: "Bebas Neue", sans-serif;
+    font-size: clamp(1.6rem, 4.6vw, 2.8rem);
+    color: #ff4e3f;
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 18px rgba(255, 78, 63, 0.45);
+}
+
+.warning-countdown {
+    margin: 0.2rem 0 0.25rem;
+    text-align: center;
+    color: #ffd7cb;
+    font-size: clamp(0.82rem, 1.8vw, 1rem);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+@keyframes parchment-flight {
+    0% {
+        transform: translate(-50%, -50%) translate(0, 0) scale(0.08) rotate(-14deg);
+        opacity: 0.35;
+    }
+    100% {
+        transform:
+            translate(-50%, -50%)
+            translate(var(--paper-dx, 0px), var(--paper-dy, 0px))
+            scale(0.22)
+            rotate(0deg);
+        opacity: 1;
+    }
+}
+
+@keyframes parchment-unroll {
+    0% {
+        transform:
+            translate(-50%, -50%)
+            translate(var(--paper-dx, 0px), var(--paper-dy, 0px))
+            scale(0.22)
+            scaleY(0.18);
+    }
+    100% {
+        transform:
+            translate(-50%, -50%)
+            translate(var(--paper-dx, 0px), var(--paper-dy, 0px))
+            scale(1)
+            scaleY(1);
+    }
+}
+
+@keyframes parchment-text-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes parchment-caret {
+    0%, 49% { border-right-color: rgba(88, 55, 22, 0.75); }
+    50%, 100% { border-right-color: transparent; }
+}
+
+@keyframes parchment-glitter {
+    from {
+        filter:
+            drop-shadow(0 0 0 rgba(255, 244, 210, 0))
+            drop-shadow(0 0 2px rgba(255, 232, 166, 0.22));
+    }
+    to {
+        filter:
+            drop-shadow(0 0 8px rgba(255, 244, 210, 0.7))
+            drop-shadow(0 0 14px rgba(255, 226, 150, 0.5));
+    }
+}
+
+@keyframes parchment-sparkles {
+    0% {
+        opacity: 0.2;
+        transform: translateY(0) scale(0.98);
+    }
+    50% {
+        opacity: 0.6;
+        transform: translateY(-2px) scale(1.02);
+    }
+    100% {
+        opacity: 0.3;
+        transform: translateY(1px) scale(1);
+    }
+}
+
+@keyframes warning-pop {
+    from {
+        transform: scale(0.92);
+    }
+    to {
+        transform: scale(1);
+    }
+}
+
 .music-player-container {
     position: fixed;
     bottom: 20px;
@@ -489,5 +984,14 @@ h2 {
     .player-content {
         width: calc(100vw - 40px);
     }
+
+    .chess-modal-card {
+        border-radius: 14px;
+        padding: 0.85rem;
+    }
 }
+
+
+
+
 
