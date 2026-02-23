@@ -10,7 +10,7 @@
 <body>
     <img
         id="dvd-gif"
-        src="https://cdn.discordapp.com/attachments/1325501562105106484/1413949848172105949/0906_12.gif?ex=699a9e29&is=69994ca9&hm=80530eb150dc30745a343cdc3fb6e0212e6c4be145924d3166a3f235bbbfeccb&"
+        src="https://cdn.discordapp.com/attachments/1325501562105106484/1413949848172105949/0906_12.gif?ex=699de9e9&is=699c9869&hm=adebf02b11c49b0e0d41a77d68a22eeb79650a272e7f42a81357f8930450d1c0&"
         alt=""
         aria-hidden="true"
         loading="eager"
@@ -112,6 +112,28 @@
             </button>
             <p class="chess-modal-kicker">Mini Jogo</p>
             <h3 id="chess-modal-title">Xadrez</h3>
+            <div class="chess-online-controls">
+                <label class="chess-field chess-mode-field">
+                    <span>Modo</span>
+                    <select id="chess-mode">
+                        <option value="local" selected>Local offline (voce vs IA)</option>
+                        <option value="online">Online automatico (2 jogadores)</option>
+                    </select>
+                </label>
+                <button class="chess-connect chess-online-only" id="chess-connect" type="button">Conectar</button>
+                <details class="chess-advanced chess-online-only">
+                    <summary>Configuracao online</summary>
+                    <label class="chess-field">
+                        <span>Servidor WS</span>
+                        <input id="chess-server-url" type="text" value="ws://localhost:8080" placeholder="ws://localhost:8080">
+                    </label>
+                    <label class="chess-field">
+                        <span>Sala (opcional)</span>
+                        <input id="chess-room-id" type="text" value="" placeholder="deixe vazio para pareamento automatico">
+                    </label>
+                </details>
+            </div>
+            <p class="chess-meta" id="chess-meta">Modo local</p>
             <p class="chess-status" id="chess-status">Vez das brancas</p>
             <div class="chess-board" id="chess-board" aria-label="Tabuleiro de xadrez"></div>
             <button class="chess-reset" id="chess-reset" type="button">Reiniciar partida</button>
@@ -131,7 +153,7 @@
         <div class="warning-modal-card" role="dialog" aria-modal="true" aria-labelledby="warning-title">
             <img
                 class="warning-image"
-                src="https://cdn.discordapp.com/attachments/1473740311519039673/1475196855838183557/puts.png?ex=699c9ba2&is=699b4a22&hm=625b7981eb504f3f4472441eda3409196357cac44503ff01d37a5ed1cc860233&"
+                src="https://cdn.discordapp.com/attachments/1455941041009070242/1475575878309118021/tumato.png?ex=699dfca0&is=699cab20&hm=1a2ba9ad60936d21da8c3f2c19f48342fba0e1157d4db2a47b6fb0d322e498b3&"
                 alt="Alerta"
             >
             <h3 id="warning-title">VOCÊ VIU DE MAIS</h3>

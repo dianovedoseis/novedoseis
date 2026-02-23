@@ -46,13 +46,41 @@ body.screen-shake {
     top: 0;
     left: 0;
     width: clamp(120px, 16vw, 210px);
+    aspect-ratio: 1 / 1;
     height: auto;
     z-index: 0;
     pointer-events: none;
     user-select: none;
-    opacity: 0.3;
-    filter: saturate(0.85) brightness(0.85) blur(0.3px);
+    opacity: 0.56;
+    filter: saturate(1.05) brightness(1.02);
+    image-rendering: pixelated;
+    object-fit: contain;
     will-change: transform;
+    animation: dvd-walk-bob 0.46s ease-in-out infinite;
+}
+
+#cursor-hunter-gif {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: clamp(84px, 11vw, 132px);
+    height: auto;
+    aspect-ratio: 1 / 1;
+    z-index: 9;
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.95;
+    object-fit: contain;
+    image-rendering: pixelated;
+    transform-origin: center center;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+    will-change: transform;
+}
+
+#cursor-hunter-gif.is-catching {
+    filter:
+        drop-shadow(0 0 10px rgba(255, 86, 56, 0.92))
+        drop-shadow(0 0 20px rgba(255, 86, 56, 0.52));
 }
 
 .container {
@@ -360,6 +388,11 @@ h2 {
     }
 }
 
+@keyframes dvd-walk-bob {
+    0%, 100% { filter: saturate(1.05) brightness(1.02); }
+    50% { filter: saturate(1.1) brightness(1.08); }
+}
+
 @media (max-width: 780px) {
     #countdown {
         grid-template-columns: repeat(2, minmax(110px, 1fr));
@@ -367,6 +400,11 @@ h2 {
 
     #dvd-gif {
         opacity: 0.24;
+    }
+
+    #cursor-hunter-gif {
+        opacity: 0.82;
+        width: clamp(72px, 16vw, 106px);
     }
 
     .video-modal-card {
@@ -462,11 +500,13 @@ h2 {
 .chess-modal-card {
     position: relative;
     width: min(620px, calc(100vw - 1.8rem));
+    max-height: none;
     border-radius: 18px;
     border: 1px solid rgba(255, 255, 255, 0.22);
     background: linear-gradient(160deg, rgba(16, 16, 16, 0.96), rgba(7, 7, 7, 0.96));
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
     padding: clamp(1rem, 3vw, 1.4rem);
+    overflow: hidden;
     transform: translateY(12px) scale(0.98);
     transition: transform 240ms ease;
 }
@@ -511,10 +551,101 @@ h2 {
     letter-spacing: 0.04em;
 }
 
+.chess-meta {
+    margin: 0 0 0.45rem;
+    font-size: 0.8rem;
+    color: #d8c3a7;
+    letter-spacing: 0.03em;
+}
+
+.chess-online-controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.42rem;
+    margin-bottom: 0.65rem;
+    align-items: end;
+}
+
+.chess-mode-field {
+    min-width: 0;
+}
+
+.chess-field {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.chess-field span {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #e5c9a4;
+}
+
+.chess-field input,
+.chess-field select {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    padding: 0.48rem 0.58rem;
+    font-size: 0.8rem;
+}
+
+.chess-connect {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    color: #fff;
+    background: linear-gradient(120deg, #5a1208 0%, #c32a12 48%, #ff5837 100%);
+    padding: 0.5rem 0.9rem;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 0.74rem;
+    justify-self: start;
+    align-self: end;
+}
+
+.chess-connect.is-disconnect {
+    background: linear-gradient(120deg, #2b2b2b 0%, #4d4d4d 100%);
+}
+
+.chess-advanced {
+    grid-column: 1 / -1;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.45rem 0.55rem;
+}
+
+.chess-advanced summary {
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: #e7d2b2;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    user-select: none;
+}
+
+.chess-advanced[open] {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.chess-advanced[open] summary {
+    margin-bottom: 0.1rem;
+}
+
+.chess-online-only.is-hidden {
+    display: none;
+}
+
 .chess-board {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
-    width: min(100%, clamp(280px, 72vmin, 540px));
+    width: min(100%, 60vh, 520px);
     aspect-ratio: 1 / 1;
     margin: 0 auto;
     border: 1px solid rgba(255, 255, 255, 0.35);
@@ -551,6 +682,10 @@ h2 {
 
 .chess-square.is-target {
     box-shadow: inset 0 0 0 3px rgba(44, 196, 110, 0.95);
+}
+
+.chess-square.is-check {
+    box-shadow: inset 0 0 0 3px rgba(224, 52, 52, 0.95);
 }
 
 .chess-reset {
@@ -988,6 +1123,15 @@ h2 {
     .chess-modal-card {
         border-radius: 14px;
         padding: 0.85rem;
+        overflow: hidden;
+    }
+
+    .chess-online-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .chess-connect {
+        justify-self: stretch;
     }
 }
 

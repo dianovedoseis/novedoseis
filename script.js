@@ -43,6 +43,11 @@ const chessModal = document.getElementById('chess-modal');
 const chessBoard = document.getElementById('chess-board');
 const chessStatus = document.getElementById('chess-status');
 const chessReset = document.getElementById('chess-reset');
+const chessMeta = document.getElementById('chess-meta');
+const chessMode = document.getElementById('chess-mode');
+const chessServerUrl = document.getElementById('chess-server-url');
+const chessRoomId = document.getElementById('chess-room-id');
+const chessConnect = document.getElementById('chess-connect');
 const closeChessControls = document.querySelectorAll('[data-close-chess]');
 const badgeRunawayButton = document.getElementById('badge-runaway-button');
 const badgeButtonZone = document.getElementById('badge-button-zone');
@@ -235,6 +240,9 @@ if (chessTrigger && chessModal) {
         chessModal.classList.add('is-open');
         chessModal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        if (chessMode && chessMode.value === 'online' && window.__chessConnectOnline) {
+            window.__chessConnectOnline(true);
+        }
     };
 
     const closeChessModal = () => {
@@ -263,330 +271,978 @@ if (chessTrigger && chessModal) {
             wp: '♙', wn: '♘', wb: '♗', wr: '♖', wq: '♕', wk: '♔',
             bp: '♟', bn: '♞', bb: '♝', br: '♜', bq: '♛', bk: '♚'
         };
-        const inBounds = (f, r) => f >= 0 && f < 8 && r >= 1 && r <= 8;
-        const toSquare = (f, r) => `${files[f]}${r}`;
-        const fromSquare = (square) => ({ file: files.indexOf(square[0]), rank: Number(square[1]) });
         const squareColorClass = (square) => {
             const fileIndex = files.indexOf(square[0]);
             const rank = Number(square[1]);
             return (fileIndex + rank) % 2 === 0 ? 'dark' : 'light';
         };
+        const loadScriptOnce = (src) => new Promise((resolve, reject) => {
+            const existing = document.querySelector(`script[data-chess-loader="${src}"]`);
+            if (existing) {
+                existing.addEventListener('load', resolve, { once: true });
+                existing.addEventListener('error', reject, { once: true });
+                return;
+            }
+            const scriptEl = document.createElement('script');
+            scriptEl.src = src;
+            scriptEl.async = true;
+            scriptEl.dataset.chessLoader = src;
+            scriptEl.onload = () => resolve();
+            scriptEl.onerror = () => reject(new Error(`Falha ao carregar ${src}`));
+            document.head.appendChild(scriptEl);
+        });
+        const getChessCtor = async () => {
+            if (typeof window.Chess === 'function') return window.Chess;
+            if (window.Chess && typeof window.Chess.Chess === 'function') return window.Chess.Chess;
+            if (window.chessjs && typeof window.chessjs.Chess === 'function') return window.chessjs.Chess;
+            const fallbacks = [
+                'https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js',
+                'https://cdn.jsdelivr.net/npm/chess.js@1.3.1/dist/chess.min.js'
+            ];
+            for (let i = 0; i < fallbacks.length; i++) {
+                try {
+                    await loadScriptOnce(fallbacks[i]);
+                } catch {}
+                if (typeof window.Chess === 'function') return window.Chess;
+                if (window.Chess && typeof window.Chess.Chess === 'function') return window.Chess.Chess;
+                if (window.chessjs && typeof window.chessjs.Chess === 'function') return window.chessjs.Chess;
+            }
+            return null;
+        };
 
-        const createFallbackGame = () => {
+        const methodCall = (obj, names, fallback = false) => {
+            for (let i = 0; i < names.length; i++) {
+                const fn = obj[names[i]];
+                if (typeof fn === 'function') return fn.call(obj);
+            }
+            return fallback;
+        };
+
+        const createOfflineChessEngine = () => {
+            const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+            const fileToIndex = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 5, g: 6, h: 7 };
+            const indexToFile = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const knightSteps = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
+            const kingSteps = [[1, 1], [1, 0], [1, -1], [0, 1], [0, -1], [-1, 1], [-1, 0], [-1, -1]];
+            const history = [];
             let board = {};
-            let turn = 'w';
+            let turnColor = 'w';
+            let castling = { w: { k: true, q: true }, b: { k: true, q: true } };
+            let epSquare = '-';
+            let halfmoveClock = 0;
+            let fullmoveNumber = 1;
+            const positionCounts = new Map();
 
-            const placeBackRank = (rank, color) => {
-                const pieces = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
-                for (let i = 0; i < 8; i++) {
-                    board[toSquare(i, rank)] = { type: pieces[i], color };
-                }
-            };
+            const sq = (f, r) => `${indexToFile[f]}${r}`;
+            const parseSq = (square) => ({ f: fileToIndex[square[0]], r: Number(square[1]) });
+            const inBounds = (f, r) => f >= 0 && f < 8 && r >= 1 && r <= 8;
+            const clonePiece = (piece) => piece ? { type: piece.type, color: piece.color } : null;
+            const opposite = (color) => color === 'w' ? 'b' : 'w';
 
-            const reset = () => {
-                board = {};
-                turn = 'w';
-                placeBackRank(1, 'w');
-                placeBackRank(8, 'b');
-                for (let i = 0; i < 8; i++) {
-                    board[toSquare(i, 2)] = { type: 'p', color: 'w' };
-                    board[toSquare(i, 7)] = { type: 'p', color: 'b' };
-                }
-            };
-
-            const get = (square) => board[square] || null;
-
-            const pushRayMoves = (from, directions, color, moves) => {
-                const start = fromSquare(from);
-                directions.forEach(([df, dr]) => {
-                    let f = start.file + df;
-                    let r = start.rank + dr;
-                    while (inBounds(f, r)) {
-                        const sq = toSquare(f, r);
-                        const target = get(sq);
-                        if (!target) {
-                            moves.push(sq);
-                        } else {
-                            if (target.color !== color) moves.push(sq);
-                            break;
+            const boardKey = () => {
+                let placement = '';
+                for (let r = 8; r >= 1; r--) {
+                    let empties = 0;
+                    for (let f = 0; f < 8; f++) {
+                        const p = board[sq(f, r)];
+                        if (!p) {
+                            empties += 1;
+                            continue;
                         }
-                        f += df;
-                        r += dr;
+                        if (empties > 0) {
+                            placement += String(empties);
+                            empties = 0;
+                        }
+                        const letter = p.color === 'w' ? p.type.toUpperCase() : p.type;
+                        placement += letter;
                     }
-                });
+                    if (empties > 0) placement += String(empties);
+                    if (r > 1) placement += '/';
+                }
+                const castlingText =
+                    `${castling.w.k ? 'K' : ''}${castling.w.q ? 'Q' : ''}${castling.b.k ? 'k' : ''}${castling.b.q ? 'q' : ''}` || '-';
+                return `${placement} ${turnColor} ${castlingText} ${epSquare}`;
             };
 
-            const legalMovesFrom = (from) => {
-                const piece = get(from);
-                if (!piece || piece.color !== turn) return [];
-                const moves = [];
-                const { file, rank } = fromSquare(from);
+            const recordPosition = () => {
+                const key = boardKey();
+                positionCounts.set(key, (positionCounts.get(key) || 0) + 1);
+            };
 
-                if (piece.type === 'p') {
-                    const dir = piece.color === 'w' ? 1 : -1;
-                    const startRank = piece.color === 'w' ? 2 : 7;
-                    const one = toSquare(file, rank + dir);
-                    if (inBounds(file, rank + dir) && !get(one)) {
-                        moves.push(one);
-                        const two = toSquare(file, rank + (2 * dir));
-                        if (rank === startRank && !get(two)) moves.push(two);
+            const get = (square) => clonePiece(board[square]) || null;
+
+            const kingSquare = (color) => {
+                for (let r = 1; r <= 8; r++) {
+                    for (let f = 0; f < 8; f++) {
+                        const square = sq(f, r);
+                        const p = board[square];
+                        if (p && p.type === 'k' && p.color === color) return square;
                     }
-                    [-1, 1].forEach(df => {
-                        const nf = file + df;
-                        const nr = rank + dir;
-                        if (!inBounds(nf, nr)) return;
-                        const targetSq = toSquare(nf, nr);
-                        const target = get(targetSq);
-                        if (target && target.color !== piece.color) moves.push(targetSq);
-                    });
-                    return moves;
+                }
+                return null;
+            };
+
+            const isSquareAttacked = (square, byColor) => {
+                const { f, r } = parseSq(square);
+                const pawnRank = byColor === 'w' ? r - 1 : r + 1;
+                for (let df = -1; df <= 1; df += 2) {
+                    const pf = f + df;
+                    if (!inBounds(pf, pawnRank)) continue;
+                    const pawn = board[sq(pf, pawnRank)];
+                    if (pawn && pawn.color === byColor && pawn.type === 'p') return true;
+                }
+                for (let i = 0; i < knightSteps.length; i++) {
+                    const nf = f + knightSteps[i][0];
+                    const nr = r + knightSteps[i][1];
+                    if (!inBounds(nf, nr)) continue;
+                    const p = board[sq(nf, nr)];
+                    if (p && p.color === byColor && p.type === 'n') return true;
+                }
+                const rayChecks = [
+                    { dirs: [[1, 0], [-1, 0], [0, 1], [0, -1]], types: ['r', 'q'] },
+                    { dirs: [[1, 1], [1, -1], [-1, 1], [-1, -1]], types: ['b', 'q'] }
+                ];
+                for (let i = 0; i < rayChecks.length; i++) {
+                    const entry = rayChecks[i];
+                    for (let d = 0; d < entry.dirs.length; d++) {
+                        let rf = f + entry.dirs[d][0];
+                        let rr = r + entry.dirs[d][1];
+                        while (inBounds(rf, rr)) {
+                            const p = board[sq(rf, rr)];
+                            if (p) {
+                                if (p.color === byColor && entry.types.includes(p.type)) return true;
+                                break;
+                            }
+                            rf += entry.dirs[d][0];
+                            rr += entry.dirs[d][1];
+                        }
+                    }
+                }
+                for (let i = 0; i < kingSteps.length; i++) {
+                    const kf = f + kingSteps[i][0];
+                    const kr = r + kingSteps[i][1];
+                    if (!inBounds(kf, kr)) continue;
+                    const p = board[sq(kf, kr)];
+                    if (p && p.color === byColor && p.type === 'k') return true;
+                }
+                return false;
+            };
+
+            const snapshot = () => ({
+                board: Object.fromEntries(Object.entries(board).map(([k, v]) => [k, clonePiece(v)])),
+                turnColor,
+                castling: { w: { ...castling.w }, b: { ...castling.b } },
+                epSquare,
+                halfmoveClock,
+                fullmoveNumber
+            });
+
+            const restore = (state) => {
+                board = state.board;
+                turnColor = state.turnColor;
+                castling = state.castling;
+                epSquare = state.epSquare;
+                halfmoveClock = state.halfmoveClock;
+                fullmoveNumber = state.fullmoveNumber;
+            };
+
+            const applyMove = (move, keepHistory = true) => {
+                if (keepHistory) history.push(snapshot());
+                const piece = board[move.from];
+                const target = board[move.to];
+                delete board[move.from];
+
+                if (move.flags.includes('e')) {
+                    const { f, r } = parseSq(move.to);
+                    const capRank = piece.color === 'w' ? r - 1 : r + 1;
+                    delete board[sq(f, capRank)];
                 }
 
-                if (piece.type === 'n') {
-                    const jumps = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
-                    jumps.forEach(([df, dr]) => {
-                        const nf = file + df;
-                        const nr = rank + dr;
-                        if (!inBounds(nf, nr)) return;
-                        const sq = toSquare(nf, nr);
-                        const target = get(sq);
-                        if (!target || target.color !== piece.color) moves.push(sq);
-                    });
-                    return moves;
+                if (move.flags.includes('k')) {
+                    if (piece.color === 'w') {
+                        board.f1 = board.h1;
+                        delete board.h1;
+                    } else {
+                        board.f8 = board.h8;
+                        delete board.h8;
+                    }
                 }
 
-                if (piece.type === 'b') {
-                    pushRayMoves(from, [[1, 1], [1, -1], [-1, 1], [-1, -1]], piece.color, moves);
-                    return moves;
+                if (move.flags.includes('q')) {
+                    if (piece.color === 'w') {
+                        board.d1 = board.a1;
+                        delete board.a1;
+                    } else {
+                        board.d8 = board.a8;
+                        delete board.a8;
+                    }
                 }
 
-                if (piece.type === 'r') {
-                    pushRayMoves(from, [[1, 0], [-1, 0], [0, 1], [0, -1]], piece.color, moves);
-                    return moves;
-                }
-
-                if (piece.type === 'q') {
-                    pushRayMoves(from, [[1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]], piece.color, moves);
-                    return moves;
-                }
+                board[move.to] = { type: move.promotion || piece.type, color: piece.color };
 
                 if (piece.type === 'k') {
-                    const around = [[1, 1], [1, 0], [1, -1], [0, 1], [0, -1], [-1, 1], [-1, 0], [-1, -1]];
-                    around.forEach(([df, dr]) => {
-                        const nf = file + df;
-                        const nr = rank + dr;
-                        if (!inBounds(nf, nr)) return;
-                        const sq = toSquare(nf, nr);
-                        const target = get(sq);
-                        if (!target || target.color !== piece.color) moves.push(sq);
-                    });
+                    castling[piece.color].k = false;
+                    castling[piece.color].q = false;
                 }
-                return moves;
+                if (piece.type === 'r') {
+                    if (move.from === 'a1') castling.w.q = false;
+                    if (move.from === 'h1') castling.w.k = false;
+                    if (move.from === 'a8') castling.b.q = false;
+                    if (move.from === 'h8') castling.b.k = false;
+                }
+                if (target && target.type === 'r') {
+                    if (move.to === 'a1') castling.w.q = false;
+                    if (move.to === 'h1') castling.w.k = false;
+                    if (move.to === 'a8') castling.b.q = false;
+                    if (move.to === 'h8') castling.b.k = false;
+                }
+
+                epSquare = '-';
+                if (piece.type === 'p') {
+                    const fromRank = Number(move.from[1]);
+                    const toRank = Number(move.to[1]);
+                    if (Math.abs(toRank - fromRank) === 2) {
+                        epSquare = `${move.from[0]}${(fromRank + toRank) / 2}`;
+                    }
+                }
+
+                if (piece.type === 'p' || target || move.flags.includes('e')) halfmoveClock = 0;
+                else halfmoveClock += 1;
+                if (piece.color === 'b') fullmoveNumber += 1;
+                turnColor = opposite(turnColor);
+                if (keepHistory) recordPosition();
+            };
+
+            const undo = () => {
+                const prev = history.pop();
+                if (prev) restore(prev);
+            };
+
+            const generatePseudo = (color, fromFilter = null) => {
+                const result = [];
+                for (let r = 1; r <= 8; r++) {
+                    for (let f = 0; f < 8; f++) {
+                        const from = sq(f, r);
+                        if (fromFilter && from !== fromFilter) continue;
+                        const piece = board[from];
+                        if (!piece || piece.color !== color) continue;
+
+                        if (piece.type === 'p') {
+                            const dir = color === 'w' ? 1 : -1;
+                            const startRank = color === 'w' ? 2 : 7;
+                            const promoRank = color === 'w' ? 8 : 1;
+                            const oneR = r + dir;
+                            if (inBounds(f, oneR) && !board[sq(f, oneR)]) {
+                                const to = sq(f, oneR);
+                                if (oneR === promoRank) ['q', 'r', 'b', 'n'].forEach((pr) => result.push({ from, to, piece: 'p', color, flags: 'p', promotion: pr }));
+                                else result.push({ from, to, piece: 'p', color, flags: 'n' });
+                                const twoR = r + (2 * dir);
+                                if (r === startRank && !board[sq(f, twoR)]) result.push({ from, to: sq(f, twoR), piece: 'p', color, flags: 'b' });
+                            }
+                            for (let df = -1; df <= 1; df += 2) {
+                                const cf = f + df;
+                                const cr = r + dir;
+                                if (!inBounds(cf, cr)) continue;
+                                const to = sq(cf, cr);
+                                const target = board[to];
+                                if (target && target.color !== color) {
+                                    if (cr === promoRank) ['q', 'r', 'b', 'n'].forEach((pr) => result.push({ from, to, piece: 'p', color, flags: 'cp', captured: target.type, promotion: pr }));
+                                    else result.push({ from, to, piece: 'p', color, flags: 'c', captured: target.type });
+                                }
+                                if (epSquare === to) result.push({ from, to, piece: 'p', color, flags: 'e', captured: 'p' });
+                            }
+                            continue;
+                        }
+
+                        if (piece.type === 'n') {
+                            for (let i = 0; i < knightSteps.length; i++) {
+                                const nf = f + knightSteps[i][0];
+                                const nr = r + knightSteps[i][1];
+                                if (!inBounds(nf, nr)) continue;
+                                const to = sq(nf, nr);
+                                const target = board[to];
+                                if (!target) result.push({ from, to, piece: 'n', color, flags: 'n' });
+                                else if (target.color !== color) result.push({ from, to, piece: 'n', color, flags: 'c', captured: target.type });
+                            }
+                            continue;
+                        }
+
+                        const sliders = piece.type === 'b'
+                            ? [[1, 1], [1, -1], [-1, 1], [-1, -1]]
+                            : piece.type === 'r'
+                                ? [[1, 0], [-1, 0], [0, 1], [0, -1]]
+                                : piece.type === 'q'
+                                    ? [[1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]]
+                                    : null;
+
+                        if (sliders) {
+                            for (let i = 0; i < sliders.length; i++) {
+                                let rf = f + sliders[i][0];
+                                let rr = r + sliders[i][1];
+                                while (inBounds(rf, rr)) {
+                                    const to = sq(rf, rr);
+                                    const target = board[to];
+                                    if (!target) result.push({ from, to, piece: piece.type, color, flags: 'n' });
+                                    else {
+                                        if (target.color !== color) result.push({ from, to, piece: piece.type, color, flags: 'c', captured: target.type });
+                                        break;
+                                    }
+                                    rf += sliders[i][0];
+                                    rr += sliders[i][1];
+                                }
+                            }
+                            continue;
+                        }
+
+                        if (piece.type === 'k') {
+                            for (let i = 0; i < kingSteps.length; i++) {
+                                const kf = f + kingSteps[i][0];
+                                const kr = r + kingSteps[i][1];
+                                if (!inBounds(kf, kr)) continue;
+                                const to = sq(kf, kr);
+                                const target = board[to];
+                                if (!target) result.push({ from, to, piece: 'k', color, flags: 'n' });
+                                else if (target.color !== color) result.push({ from, to, piece: 'k', color, flags: 'c', captured: target.type });
+                            }
+                            if (!isSquareAttacked(from, opposite(color))) {
+                                if (castling[color].k) {
+                                    const rank = color === 'w' ? 1 : 8;
+                                    const f1 = sq(5, rank);
+                                    const g1 = sq(6, rank);
+                                    if (!board[f1] && !board[g1] && !isSquareAttacked(f1, opposite(color)) && !isSquareAttacked(g1, opposite(color))) {
+                                        result.push({ from, to: g1, piece: 'k', color, flags: 'k' });
+                                    }
+                                }
+                                if (castling[color].q) {
+                                    const rank = color === 'w' ? 1 : 8;
+                                    const d1 = sq(3, rank);
+                                    const c1 = sq(2, rank);
+                                    const b1 = sq(1, rank);
+                                    if (!board[d1] && !board[c1] && !board[b1] && !isSquareAttacked(d1, opposite(color)) && !isSquareAttacked(c1, opposite(color))) {
+                                        result.push({ from, to: c1, piece: 'k', color, flags: 'q' });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return result;
+            };
+
+            const generateLegal = (color, fromFilter = null) => {
+                const pseudo = generatePseudo(color, fromFilter);
+                const legal = [];
+                for (let i = 0; i < pseudo.length; i++) {
+                    const state = snapshot();
+                    applyMove(pseudo[i], false);
+                    const kingSq = kingSquare(color);
+                    const illegal = !kingSq || isSquareAttacked(kingSq, opposite(color));
+                    restore(state);
+                    if (!illegal) legal.push(pseudo[i]);
+                }
+                return legal;
+            };
+
+            const load = (fen) => {
+                const parts = String(fen || '').trim().split(/\s+/);
+                if (parts.length < 4) return false;
+                const [placement, side, castlingPart, epPart, half = '0', full = '1'] = parts;
+                const rows = placement.split('/');
+                if (rows.length !== 8) return false;
+                const nextBoard = {};
+                for (let i = 0; i < rows.length; i++) {
+                    let f = 0;
+                    const r = 8 - i;
+                    for (let j = 0; j < rows[i].length; j++) {
+                        const ch = rows[i][j];
+                        if (/\d/.test(ch)) {
+                            f += Number(ch);
+                            continue;
+                        }
+                        const color = ch === ch.toUpperCase() ? 'w' : 'b';
+                        const type = ch.toLowerCase();
+                        if (!['p', 'n', 'b', 'r', 'q', 'k'].includes(type) || f > 7) return false;
+                        nextBoard[sq(f, r)] = { type, color };
+                        f += 1;
+                    }
+                    if (f !== 8) return false;
+                }
+                board = nextBoard;
+                turnColor = side === 'b' ? 'b' : 'w';
+                castling = {
+                    w: { k: castlingPart.includes('K'), q: castlingPart.includes('Q') },
+                    b: { k: castlingPart.includes('k'), q: castlingPart.includes('q') }
+                };
+                epSquare = epPart === '-' ? '-' : epPart;
+                halfmoveClock = Number(half) || 0;
+                fullmoveNumber = Number(full) || 1;
+                history.length = 0;
+                positionCounts.clear();
+                recordPosition();
+                return true;
+            };
+
+            const fen = () => `${boardKey()} ${halfmoveClock} ${fullmoveNumber}`;
+
+            const moves = ({ square, verbose } = {}) => {
+                const legal = generateLegal(turnColor, square || null);
+                if (verbose) return legal.map((m) => ({ ...m }));
+                return legal.map((m) => m.to);
             };
 
             const move = ({ from, to, promotion = 'q' }) => {
-                const piece = get(from);
-                if (!piece || piece.color !== turn) return null;
-                const legal = legalMovesFrom(from);
-                if (!legal.includes(to)) return null;
-                const moved = { ...piece };
-                if (moved.type === 'p') {
-                    const toRank = Number(to[1]);
-                    if ((moved.color === 'w' && toRank === 8) || (moved.color === 'b' && toRank === 1)) {
-                        moved.type = promotion || 'q';
-                    }
-                }
-                board[to] = moved;
-                delete board[from];
-                turn = turn === 'w' ? 'b' : 'w';
-                return moved;
+                const legal = generateLegal(turnColor, from);
+                const desiredPromotion = String(promotion || 'q').toLowerCase();
+                const match = legal.find((m) => m.to === to && (!m.promotion || m.promotion === desiredPromotion));
+                if (!match) return null;
+                const chosen = { ...match };
+                if (chosen.promotion) chosen.promotion = desiredPromotion;
+                applyMove(chosen, true);
+                return chosen;
             };
 
+            const inCheck = () => {
+                const ksq = kingSquare(turnColor);
+                if (!ksq) return false;
+                return isSquareAttacked(ksq, opposite(turnColor));
+            };
+
+            const inCheckmate = () => inCheck() && generateLegal(turnColor).length === 0;
+            const inStalemate = () => !inCheck() && generateLegal(turnColor).length === 0;
+            const inThreefold = () => (positionCounts.get(boardKey()) || 0) >= 3;
+            const insufficientMaterial = () => {
+                const pieces = Object.values(board);
+                const nonKings = pieces.filter((p) => p.type !== 'k');
+                if (nonKings.length === 0) return true;
+                if (nonKings.length === 1 && ['b', 'n'].includes(nonKings[0].type)) return true;
+                if (nonKings.every((p) => p.type === 'b')) {
+                    const bishopSquares = Object.entries(board)
+                        .filter(([, p]) => p.type === 'b')
+                        .map(([square]) => {
+                            const { f, r } = parseSq(square);
+                            return (f + r) % 2;
+                        });
+                    return bishopSquares.every((v) => v === bishopSquares[0]);
+                }
+                return false;
+            };
+            const inDraw = () => inStalemate() || inThreefold() || insufficientMaterial() || halfmoveClock >= 100;
+            const gameOver = () => inCheckmate() || inDraw();
+
+            const reset = () => load(START_FEN);
             reset();
+
             return {
                 get,
+                moves,
                 move,
+                turn: () => turnColor,
+                load,
+                fen,
                 reset,
-                turn: () => turn,
-                moves: ({ square, verbose }) => {
-                    const list = legalMovesFrom(square);
-                    return verbose ? list.map(to => ({ to })) : list;
-                },
-                in_checkmate: () => false,
-                in_draw: () => false,
-                in_check: () => false
+                in_check: inCheck,
+                in_checkmate: inCheckmate,
+                in_stalemate: inStalemate,
+                in_threefold_repetition: inThreefold,
+                insufficient_material: insufficientMaterial,
+                in_draw: inDraw,
+                game_over: gameOver,
+                isCheck: inCheck,
+                isCheckmate: inCheckmate,
+                isStalemate: inStalemate,
+                isThreefoldRepetition: inThreefold,
+                isInsufficientMaterial: insufficientMaterial,
+                isDraw: inDraw,
+                isGameOver: gameOver
             };
         };
 
-        const game = typeof Chess !== 'undefined' ? new Chess() : createFallbackGame();
-        const usingFallback = typeof Chess === 'undefined';
-        const humanColor = 'w';
-        const aiColor = 'b';
-        const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
-        let selectedSquare = null;
-        let legalTargets = [];
-        let aiThinking = false;
-        let aiTimeoutId = null;
+        const initChess = async () => {
+            const ChessCtor = await getChessCtor();
+            const game = ChessCtor ? new ChessCtor() : createOfflineChessEngine();
+            let selectedSquare = null;
+            let legalTargets = [];
+            let mode = chessMode ? chessMode.value : 'local';
+            let onlineSocket = null;
+            let onlineConnected = false;
+            let onlineRoom = '';
+            let playerColor = null;
+            let isConnecting = false;
+            const onlineOnlyControls = Array.from(chessModal.querySelectorAll('.chess-online-only'));
+            const localHumanColor = 'w';
+            const localAiColor = 'b';
+            let aiThinking = false;
+            let aiMoveTimer = null;
 
-        const getAllMovesFor = (color) => {
-            const moves = [];
-            for (let rank = 1; rank <= 8; rank++) {
-                for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
-                    const from = `${files[fileIdx]}${rank}`;
-                    const piece = game.get(from);
-                    if (!piece || piece.color !== color) continue;
-                    const targets = game.moves({ square: from, verbose: true });
-                    targets.forEach(target => {
-                        const to = target.to;
-                        moves.push({ from, to });
-                    });
+            const pieceBaseValue = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+            const pst = {
+                p: [0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0],
+                n: [-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
+                b: [-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
+                r: [0,0,0,0,0,0,0,0,5,10,10,10,10,10,10,5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,0,0,0,5,5,0,0,0],
+                q: [-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10,-5,0,5,5,5,5,0,-5,0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
+                k: [-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10,20,20,0,0,0,0,20,20,20,30,10,0,0,10,30,20]
+            };
+
+            const isCheck = () => methodCall(game, ['in_check', 'isCheck'], false);
+            const isCheckmate = () => methodCall(game, ['in_checkmate', 'isCheckmate'], false);
+            const isDraw = () => methodCall(game, ['in_draw', 'isDraw'], false);
+            const isStalemate = () => methodCall(game, ['in_stalemate', 'isStalemate'], false);
+            const isThreefold = () => methodCall(game, ['in_threefold_repetition', 'isThreefoldRepetition'], false);
+            const isInsufficient = () => methodCall(game, ['insufficient_material', 'isInsufficientMaterial'], false);
+            const isGameOver = () => methodCall(game, ['game_over', 'isGameOver'], false);
+            const turn = () => game.turn();
+
+            const setMeta = (text) => {
+                if (chessMeta) chessMeta.innerText = text;
+            };
+
+            const updateConnectButton = () => {
+                if (!chessConnect) return;
+                chessConnect.innerText = onlineConnected ? 'Desconectar' : (isConnecting ? 'Conectando...' : 'Conectar');
+                chessConnect.classList.toggle('is-disconnect', onlineConnected);
+                chessConnect.disabled = isConnecting;
+            };
+
+            const syncModeUi = () => {
+                const isOnlineMode = mode === 'online';
+                onlineOnlyControls.forEach((el) => {
+                    el.classList.toggle('is-hidden', !isOnlineMode);
+                });
+            };
+
+            const setOnlineInputsEnabled = (enabled) => {
+                if (chessServerUrl) chessServerUrl.disabled = !enabled;
+                if (chessRoomId) chessRoomId.disabled = !enabled;
+            };
+
+            const sendOnlineMessage = (payload) => {
+                if (!onlineSocket || onlineSocket.readyState !== WebSocket.OPEN) return;
+                onlineSocket.send(JSON.stringify(payload));
+            };
+
+            const disconnectOnline = () => {
+                if (onlineSocket) {
+                    onlineSocket.close();
+                    onlineSocket = null;
                 }
-            }
-            return moves;
-        };
+                onlineConnected = false;
+                isConnecting = false;
+                playerColor = null;
+                onlineRoom = '';
+                setOnlineInputsEnabled(true);
+                updateConnectButton();
+            };
 
-        const pickFallbackAiMove = () => {
-            const moves = getAllMovesFor(aiColor);
-            if (!moves.length) return null;
-            let bestScore = -Infinity;
-            let bestMoves = [];
-            moves.forEach(move => {
-                const captured = game.get(move.to);
-                let score = captured ? (pieceValues[captured.type] || 0) : 0;
-                score += Math.random() * 0.2;
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMoves = [move];
-                } else if (Math.abs(score - bestScore) < 0.0001) {
-                    bestMoves.push(move);
+            const findKingSquare = (color) => {
+                for (let rank = 1; rank <= 8; rank++) {
+                    for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
+                        const square = `${files[fileIdx]}${rank}`;
+                        const piece = game.get(square);
+                        if (piece && piece.type === 'k' && piece.color === color) return square;
+                    }
                 }
-            });
-            return bestMoves[Math.floor(Math.random() * bestMoves.length)];
-        };
+                return null;
+            };
 
-        const runFallbackAiTurn = () => {
-            if (!usingFallback) return;
-            if (game.turn() !== aiColor) return;
-            if (aiThinking) return;
-            aiThinking = true;
-            updateStatus();
-            aiTimeoutId = setTimeout(() => {
-                const move = pickFallbackAiMove();
-                if (move) game.move({ from: move.from, to: move.to, promotion: 'q' });
-                aiThinking = false;
-                aiTimeoutId = null;
-                clearSelection();
+            const canPlayNow = () => {
+                if (mode !== 'online') return !aiThinking && turn() === localHumanColor;
+                if (!onlineConnected || !playerColor) return false;
+                return turn() === playerColor;
+            };
+
+            const evaluatePosition = () => {
+                let score = 0;
+                for (let rank = 1; rank <= 8; rank++) {
+                    for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
+                        const square = `${files[fileIdx]}${rank}`;
+                        const piece = game.get(square);
+                        if (!piece) continue;
+                        const table = pst[piece.type] || new Array(64).fill(0);
+                        const idx = (8 - rank) * 8 + fileIdx;
+                        const mirrorIdx = (rank - 1) * 8 + fileIdx;
+                        const positional = piece.color === 'w' ? table[idx] : table[mirrorIdx];
+                        const value = (pieceBaseValue[piece.type] || 0) + positional;
+                        score += piece.color === localAiColor ? value : -value;
+                    }
+                }
+                return score;
+            };
+
+            const applySearchMove = (candidate) => {
+                return game.move({
+                    from: candidate.from,
+                    to: candidate.to,
+                    promotion: candidate.promotion || 'q'
+                });
+            };
+
+            const searchBest = (depth, alpha, beta) => {
+                if (isCheckmate()) return turn() === localAiColor ? -100000 - depth : 100000 + depth;
+                if (isDraw()) return 0;
+                if (depth === 0) return evaluatePosition();
+
+                const moves = game.moves({ verbose: true });
+                if (!moves.length) return evaluatePosition();
+
+                const maximizing = turn() === localAiColor;
+                let best = maximizing ? -Infinity : Infinity;
+                const canUndo = typeof game.undo === 'function';
+
+                for (let i = 0; i < moves.length; i++) {
+                    const prevFen = canUndo ? null : game.fen();
+                    const played = applySearchMove(moves[i]);
+                    if (!played) continue;
+                    const score = searchBest(depth - 1, alpha, beta);
+                    if (canUndo) game.undo();
+                    else game.load(prevFen);
+
+                    if (maximizing) {
+                        if (score > best) best = score;
+                        if (best > alpha) alpha = best;
+                    } else {
+                        if (score < best) best = score;
+                        if (best < beta) beta = best;
+                    }
+                    if (beta <= alpha) break;
+                }
+                return best;
+            };
+
+            const chooseAiMove = () => {
+                const moves = game.moves({ verbose: true });
+                if (!moves.length) return null;
+                let bestMove = moves[0];
+                let bestScore = -Infinity;
+                const canUndo = typeof game.undo === 'function';
+                const depth = moves.length <= 16 ? 4 : 3;
+
+                for (let i = 0; i < moves.length; i++) {
+                    const prevFen = canUndo ? null : game.fen();
+                    const played = applySearchMove(moves[i]);
+                    if (!played) continue;
+                    const score = searchBest(depth - 1, -Infinity, Infinity);
+                    if (canUndo) game.undo();
+                    else game.load(prevFen);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = moves[i];
+                    }
+                }
+                return bestMove;
+            };
+
+            const runLocalAiIfNeeded = () => {
+                if (mode !== 'local') return;
+                if (aiThinking || isGameOver()) return;
+                if (turn() !== localAiColor) return;
+                aiThinking = true;
                 renderBoard();
-            }, 360);
-        };
+                if (aiMoveTimer) clearTimeout(aiMoveTimer);
+                aiMoveTimer = setTimeout(() => {
+                    const move = chooseAiMove();
+                    if (move) {
+                        game.move({
+                            from: move.from,
+                            to: move.to,
+                            promotion: move.promotion || 'q'
+                        });
+                    }
+                    aiThinking = false;
+                    aiMoveTimer = null;
+                    clearSelection();
+                    renderBoard();
+                }, 150);
+            };
 
-        const updateStatus = () => {
-            if (usingFallback) {
-                const turnName = game.turn() === 'w' ? 'Brancas' : 'Pretas';
-                if (aiThinking) {
-                    chessStatus.innerText = 'Modo offline: IA pensando...';
+            const updateStatus = () => {
+                if (isCheckmate()) {
+                    chessStatus.innerText = `Xeque-mate. ${turn() === 'w' ? 'Pretas' : 'Brancas'} venceram.`;
                     return;
                 }
-                chessStatus.innerText = `Modo offline: vez das ${turnName.toLowerCase()}.`;
-                return;
-            }
-            if (game.in_checkmate()) {
-                chessStatus.innerText = `Xeque-mate. ${game.turn() === 'w' ? 'Pretas' : 'Brancas'} venceram.`;
-                return;
-            }
-            if (game.in_draw()) {
-                chessStatus.innerText = 'Empate.';
-                return;
-            }
-            const turnName = game.turn() === 'w' ? 'Brancas' : 'Pretas';
-            const checkText = game.in_check() ? ' em xeque' : '';
-            chessStatus.innerText = `Vez das ${turnName.toLowerCase()}${checkText}.`;
-        };
-
-        const clearSelection = () => {
-            selectedSquare = null;
-            legalTargets = [];
-        };
-
-        const renderBoard = () => {
-            chessBoard.innerHTML = '';
-            for (let rank = 8; rank >= 1; rank--) {
-                for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
-                    const square = `${files[fileIdx]}${rank}`;
-                    const piece = game.get(square);
-                    const squareEl = document.createElement('button');
-                    squareEl.type = 'button';
-                    squareEl.className = `chess-square ${squareColorClass(square)}`;
-                    squareEl.dataset.square = square;
-                    if (selectedSquare === square) squareEl.classList.add('is-selected');
-                    if (legalTargets.includes(square)) squareEl.classList.add('is-target');
-                    squareEl.textContent = piece ? pieceGlyph[`${piece.color}${piece.type}`] : '';
-                    chessBoard.appendChild(squareEl);
+                if (isDraw()) {
+                    if (isStalemate()) chessStatus.innerText = 'Empate por afogamento.';
+                    else if (isThreefold()) chessStatus.innerText = 'Empate por repeticao.';
+                    else if (isInsufficient()) chessStatus.innerText = 'Empate por material insuficiente.';
+                    else chessStatus.innerText = 'Empate.';
+                    return;
                 }
-            }
-            updateStatus();
-        };
+                const turnName = turn() === 'w' ? 'Brancas' : 'Pretas';
+                const checkText = isCheck() ? ' em xeque' : '';
+                if (mode === 'online') {
+                    if (!onlineConnected) {
+                        chessStatus.innerText = `Aguardando conexao online...`;
+                        return;
+                    }
+                    const owner = turn() === playerColor ? 'sua vez' : 'vez do oponente';
+                    chessStatus.innerText = `Vez das ${turnName.toLowerCase()}${checkText} (${owner}).`;
+                    return;
+                }
+                if (aiThinking) {
+                    chessStatus.innerText = 'IA pensando...';
+                    return;
+                }
+                const owner = turn() === localHumanColor ? 'sua vez' : 'vez da IA';
+                chessStatus.innerText = `Vez das ${turnName.toLowerCase()}${checkText} (${owner}).`;
+            };
 
-        const selectSquare = (square) => {
-            if (usingFallback && (aiThinking || game.turn() !== humanColor)) return;
-            const piece = game.get(square);
-            if (!piece || piece.color !== game.turn()) {
+            const clearSelection = () => {
+                selectedSquare = null;
+                legalTargets = [];
+            };
+
+            const renderBoard = () => {
+                chessBoard.innerHTML = '';
+                for (let rank = 8; rank >= 1; rank--) {
+                    for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
+                        const square = `${files[fileIdx]}${rank}`;
+                        const piece = game.get(square);
+                        const squareEl = document.createElement('button');
+                        squareEl.type = 'button';
+                        squareEl.className = `chess-square ${squareColorClass(square)}`;
+                        squareEl.dataset.square = square;
+                        if (selectedSquare === square) squareEl.classList.add('is-selected');
+                        if (legalTargets.includes(square)) squareEl.classList.add('is-target');
+                        if (isCheck() && square === findKingSquare(turn())) squareEl.classList.add('is-check');
+                        squareEl.textContent = piece ? pieceGlyph[`${piece.color}${piece.type}`] : '';
+                        chessBoard.appendChild(squareEl);
+                    }
+                }
+                if (mode === 'online') {
+                    if (!onlineConnected) setMeta('Modo online: aguardando 2 jogadores');
+                    else {
+                        const colorText = playerColor === 'w' ? 'Brancas' : 'Pretas';
+                        setMeta(`Modo online: sala ${onlineRoom} (${colorText})`);
+                    }
+                } else {
+                    setMeta('Modo local: voce (brancas) vs IA (pretas)');
+                }
+                updateStatus();
+            };
+
+            const pickPromotion = (from, to) => {
+                const piece = game.get(from);
+                if (!piece || piece.type !== 'p') return 'q';
+                const rank = Number(to[1]);
+                if ((piece.color === 'w' && rank !== 8) || (piece.color === 'b' && rank !== 1)) return 'q';
+                const answer = prompt('Promocao: q (rainha), r (torre), b (bispo), n (cavalo)', 'q');
+                const normalized = String(answer || 'q').toLowerCase().trim();
+                return ['q', 'r', 'b', 'n'].includes(normalized) ? normalized : 'q';
+            };
+
+            const tryMove = (from, to, source = 'local', incomingPromotion = 'q') => {
+                const promotion = source === 'local' ? pickPromotion(from, to) : incomingPromotion;
+                const move = game.move({ from, to, promotion });
+                if (!move) {
+                    selectSquare(to);
+                    return false;
+                }
                 clearSelection();
+                if (mode === 'online' && source !== 'remote') {
+                    sendOnlineMessage({
+                        type: 'move',
+                        from: move.from,
+                        to: move.to,
+                        promotion: move.promotion || promotion || 'q',
+                        fen: game.fen()
+                    });
+                }
                 renderBoard();
-                return;
-            }
-            selectedSquare = square;
-            legalTargets = game.moves({ square, verbose: true }).map(move => move.to);
-            renderBoard();
-        };
+                runLocalAiIfNeeded();
+                return true;
+            };
 
-        const tryMove = (from, to) => {
-            const move = game.move({ from, to, promotion: 'q' });
-            if (!move) {
-                selectSquare(to);
-                return false;
-            }
-            clearSelection();
-            renderBoard();
-            if (usingFallback) runFallbackAiTurn();
-            return true;
-        };
+            const selectSquare = (square) => {
+                if (!canPlayNow() || isGameOver()) return;
+                const piece = game.get(square);
+                if (!piece || piece.color !== turn() || (mode === 'online' && piece.color !== playerColor)) {
+                    clearSelection();
+                    renderBoard();
+                    return;
+                }
+                selectedSquare = square;
+                legalTargets = game.moves({ square, verbose: true }).map((m) => m.to);
+                renderBoard();
+            };
 
-        chessBoard.addEventListener('click', (event) => {
-            if (usingFallback && (aiThinking || game.turn() !== humanColor)) return;
-            const squareEl = event.target.closest('.chess-square');
-            if (!squareEl) return;
-            const clicked = squareEl.dataset.square;
-            if (!clicked) return;
-            if (!selectedSquare) {
+            chessBoard.addEventListener('click', (event) => {
+                if (!canPlayNow() || isGameOver()) return;
+                const squareEl = event.target.closest('.chess-square');
+                if (!squareEl) return;
+                const clicked = squareEl.dataset.square;
+                if (!clicked) return;
+                if (!selectedSquare) return selectSquare(clicked);
+                if (clicked === selectedSquare) {
+                    clearSelection();
+                    return renderBoard();
+                }
+                if (legalTargets.includes(clicked)) return tryMove(selectedSquare, clicked);
                 selectSquare(clicked);
-                return;
+            });
+
+            const handleOnlineMessage = (rawMessage) => {
+                let payload;
+                try {
+                    payload = JSON.parse(rawMessage);
+                } catch {
+                    return;
+                }
+                if (!payload || typeof payload !== 'object') return;
+
+                if (payload.type === 'waiting') {
+                    setMeta('Online: aguardando segundo jogador...');
+                    return;
+                }
+
+                if (payload.type === 'joined') {
+                    onlineConnected = true;
+                    isConnecting = false;
+                    playerColor = payload.color === 'w' || payload.color === 'b' ? payload.color : null;
+                    onlineRoom = payload.room || 'auto';
+                    if (typeof payload.fen === 'string' && payload.fen) game.load(payload.fen);
+                    clearSelection();
+                    updateConnectButton();
+                    renderBoard();
+                    return;
+                }
+
+                if (payload.type === 'state' && typeof payload.fen === 'string' && payload.fen) {
+                    game.load(payload.fen);
+                    clearSelection();
+                    renderBoard();
+                    return;
+                }
+
+                if (payload.type === 'move') {
+                    if (typeof payload.fen === 'string' && payload.fen) {
+                        game.load(payload.fen);
+                        clearSelection();
+                        renderBoard();
+                        return;
+                    }
+                    if (payload.from && payload.to) {
+                        tryMove(payload.from, payload.to, 'remote', payload.promotion || 'q');
+                    }
+                    return;
+                }
+
+                if (payload.type === 'reset') {
+                    if (payload.fen && typeof payload.fen === 'string') game.load(payload.fen);
+                    else game.reset();
+                    clearSelection();
+                    renderBoard();
+                }
+            };
+
+            const connectOnline = (preferAutoMatch = false) => {
+                if (!chessServerUrl) return;
+                if (onlineConnected || isConnecting) return;
+
+                const url = chessServerUrl.value.trim();
+                if (!url) {
+                    setMeta('Informe o servidor WS');
+                    return;
+                }
+
+                isConnecting = true;
+                updateConnectButton();
+                setMeta('Conectando...');
+                setOnlineInputsEnabled(false);
+
+                try {
+                    onlineSocket = new WebSocket(url);
+                } catch {
+                    isConnecting = false;
+                    updateConnectButton();
+                    setMeta('URL do servidor invalida');
+                    setOnlineInputsEnabled(true);
+                    return;
+                }
+
+                onlineSocket.addEventListener('open', () => {
+                    const room = chessRoomId ? chessRoomId.value.trim() : '';
+                    const useAuto = preferAutoMatch || !room;
+                    if (useAuto) sendOnlineMessage({ type: 'join-auto' });
+                    else sendOnlineMessage({ type: 'join', room });
+                    sendOnlineMessage({ type: 'state-request' });
+                });
+
+                onlineSocket.addEventListener('message', (event) => handleOnlineMessage(event.data));
+
+                onlineSocket.addEventListener('close', () => {
+                    onlineConnected = false;
+                    isConnecting = false;
+                    playerColor = null;
+                    onlineRoom = '';
+                    setOnlineInputsEnabled(true);
+                    updateConnectButton();
+                    renderBoard();
+                });
+
+                onlineSocket.addEventListener('error', () => {
+                    isConnecting = false;
+                    updateConnectButton();
+                    setMeta('Falha na conexao online');
+                });
+            };
+
+            window.__chessConnectOnline = connectOnline;
+
+            if (chessMode) {
+                chessMode.addEventListener('change', () => {
+                    mode = chessMode.value === 'online' ? 'online' : 'local';
+                    clearSelection();
+                    if (mode === 'local') {
+                        disconnectOnline();
+                        runLocalAiIfNeeded();
+                    } else {
+                        if (aiMoveTimer) {
+                            clearTimeout(aiMoveTimer);
+                            aiMoveTimer = null;
+                        }
+                        aiThinking = false;
+                        connectOnline(true);
+                    }
+                    syncModeUi();
+                    renderBoard();
+                });
             }
-            if (clicked === selectedSquare) {
+
+            if (chessConnect) {
+                chessConnect.addEventListener('click', () => {
+                    mode = 'online';
+                    if (chessMode) chessMode.value = 'online';
+                    if (onlineConnected || isConnecting) {
+                        disconnectOnline();
+                        renderBoard();
+                    } else {
+                        connectOnline(true);
+                    }
+                });
+            }
+
+            chessReset.addEventListener('click', () => {
+                game.reset();
                 clearSelection();
+                if (aiMoveTimer) {
+                    clearTimeout(aiMoveTimer);
+                    aiMoveTimer = null;
+                }
+                aiThinking = false;
+                if (mode === 'online' && onlineConnected) {
+                    sendOnlineMessage({ type: 'reset', fen: game.fen() });
+                }
                 renderBoard();
-                return;
-            }
-            if (legalTargets.includes(clicked)) {
-                tryMove(selectedSquare, clicked);
-                return;
-            }
-            selectSquare(clicked);
-        });
+                runLocalAiIfNeeded();
+            });
 
-        chessReset.addEventListener('click', () => {
-            if (aiTimeoutId) {
-                clearTimeout(aiTimeoutId);
-                aiTimeoutId = null;
-            }
-            aiThinking = false;
-            game.reset();
-            clearSelection();
+            updateConnectButton();
+            syncModeUi();
             renderBoard();
-            runFallbackAiTurn();
-        });
+            runLocalAiIfNeeded();
+        };
 
-        renderBoard();
+        initChess();
     }
 }
 
@@ -747,17 +1403,190 @@ if (badgeRunawayButton && badgeButtonZone) {
 
 const dvdGif = document.getElementById('dvd-gif');
 if (dvdGif) {
-    let dx = 0, dy = 0, vx = 1.9, vy = 1.45;
-    const animate = () => {
-        const maxX = window.innerWidth - dvdGif.offsetWidth;
-        const maxY = window.innerHeight - dvdGif.offsetHeight;
-        dx += vx; dy += vy;
+    let dx = Math.max(0, window.innerWidth * 0.1);
+    let dy = Math.max(0, window.innerHeight * 0.1);
+    let vx = 1.9;
+    let vy = 1.45;
+
+    const animateBackgroundGif = () => {
+        const maxX = Math.max(0, window.innerWidth - dvdGif.offsetWidth);
+        const maxY = Math.max(0, window.innerHeight - dvdGif.offsetHeight);
+        dx += vx;
+        dy += vy;
         if (dx <= 0 || dx >= maxX) vx *= -1;
         if (dy <= 0 || dy >= maxY) vy *= -1;
+        dx = Math.max(0, Math.min(dx, maxX));
+        dy = Math.max(0, Math.min(dy, maxY));
         dvdGif.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-        requestAnimationFrame(animate);
+        requestAnimationFrame(animateBackgroundGif);
     };
-    dvdGif.complete ? animate() : dvdGif.addEventListener('load', animate);
+
+    const startBackgroundGif = () => requestAnimationFrame(animateBackgroundGif);
+    dvdGif.complete ? startBackgroundGif() : dvdGif.addEventListener('load', startBackgroundGif, { once: true });
+}
+
+const hunterGifSrc = 'https://cdn.discordapp.com/attachments/1473740311519039673/1475555348990398535/gifzin.gif?ex=699de981&is=699c9801&hm=ce56f11b1a4c44801630bc32e3aac7d527dafe079134bd156c899c1bafb000df&';
+const hunterGifFallback = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='none'/%3E%3Cg%3E%3Cpath d='M48 12c12 0 22 8 24 20l2 14c1 10-3 20-11 26l-3 2v10c0 2-2 4-4 4H40c-2 0-4-2-4-4V74l-3-2c-8-6-12-16-11-26l2-14c2-12 12-20 24-20z' fill='%23202020'/%3E%3Crect x='28' y='38' width='40' height='24' rx='10' fill='%23101010'/%3E%3Ccircle cx='40' cy='50' r='4' fill='%23d9eef7'/%3E%3Ccircle cx='56' cy='50' r='4' fill='%23d9eef7'/%3E%3C/g%3E%3C/svg%3E";
+
+const cursorHunterGif = document.createElement('img');
+cursorHunterGif.id = 'cursor-hunter-gif';
+cursorHunterGif.src = hunterGifSrc;
+cursorHunterGif.alt = 'Cacador de cursor';
+cursorHunterGif.setAttribute('aria-hidden', 'true');
+cursorHunterGif.decoding = 'async';
+cursorHunterGif.loading = 'eager';
+document.body.appendChild(cursorHunterGif);
+
+cursorHunterGif.addEventListener('error', () => {
+    if (cursorHunterGif.src !== hunterGifFallback) {
+        cursorHunterGif.src = hunterGifFallback;
+    }
+});
+
+{
+    const CAPTURE_RADIUS = 34;
+    const CHASE_ACCEL = 0.1;
+    const MAX_SPEED = 5.8;
+    const FRICTION = 0.986;
+    const CAPTURE_DURATION_MS = 760;
+    const CAPTURE_COOLDOWN_MS = 850;
+    const DRAG_OFFSET_X = 26;
+    const DRAG_OFFSET_Y = -24;
+    const HUNTER_GIF_FACES_RIGHT_NATIVELY = true;
+
+    let x = Math.max(0, window.innerWidth * 0.7);
+    let y = Math.max(0, window.innerHeight * 0.2);
+    let vx = -2.4;
+    let vy = 1.7;
+    let pointerX = window.innerWidth / 2;
+    let pointerY = window.innerHeight / 2;
+    let pointerKnown = false;
+    let pointerLastSeen = 0;
+    let captureUntil = 0;
+    let captureCooldownUntil = 0;
+    let hunterStarted = false;
+    let facingScaleX = 1;
+    let visualTiltDeg = 0;
+
+    const mapRoute = [
+        [0.12, 0.12], [0.5, 0.08], [0.86, 0.16], [0.9, 0.5],
+        [0.84, 0.84], [0.48, 0.92], [0.15, 0.82], [0.08, 0.45]
+    ];
+    let mapIndex = 0;
+
+    const updatePointer = (clientX, clientY) => {
+        if (typeof clientX !== 'number' || typeof clientY !== 'number') return;
+        pointerX = clientX;
+        pointerY = clientY;
+        pointerKnown = true;
+        pointerLastSeen = performance.now();
+    };
+
+    document.addEventListener('pointermove', (event) => updatePointer(event.clientX, event.clientY));
+    document.addEventListener('mousemove', (event) => updatePointer(event.clientX, event.clientY));
+    document.addEventListener('touchmove', (event) => {
+        if (!event.touches || !event.touches[0]) return;
+        updatePointer(event.touches[0].clientX, event.touches[0].clientY);
+    }, { passive: true });
+
+    const keepInside = () => {
+        const maxX = Math.max(0, window.innerWidth - cursorHunterGif.offsetWidth);
+        const maxY = Math.max(0, window.innerHeight - cursorHunterGif.offsetHeight);
+        x = Math.max(0, Math.min(x, maxX));
+        y = Math.max(0, Math.min(y, maxY));
+    };
+
+    const applyHunterTransform = () => {
+        cursorHunterGif.style.transform =
+            `translate3d(${x}px, ${y}px, 0) scaleX(${facingScaleX}) rotate(${visualTiltDeg}deg)`;
+    };
+
+    const animateHunter = (timestamp) => {
+        const halfW = cursorHunterGif.offsetWidth / 2;
+        const halfH = cursorHunterGif.offsetHeight / 2;
+        const centerX = x + halfW;
+        const centerY = y + halfH;
+        const isCapturing = timestamp < captureUntil;
+
+        if (isCapturing) {
+            x += ((pointerX + DRAG_OFFSET_X) - x) * 0.34;
+            y += ((pointerY + DRAG_OFFSET_Y) - y) * 0.34;
+            cursorHunterGif.classList.add('is-catching');
+            visualTiltDeg = 0;
+        } else {
+            cursorHunterGif.classList.remove('is-catching');
+            const shouldPatrolMap = !pointerKnown || (timestamp - pointerLastSeen > 2200);
+            let targetX;
+            let targetY;
+
+            if (shouldPatrolMap) {
+                const point = mapRoute[mapIndex];
+                targetX = point[0] * window.innerWidth;
+                targetY = point[1] * window.innerHeight;
+                if (Math.hypot(targetX - centerX, targetY - centerY) < 50) {
+                    mapIndex = (mapIndex + 1) % mapRoute.length;
+                }
+            } else {
+                targetX = pointerX;
+                targetY = pointerY;
+            }
+
+            const deltaX = targetX - centerX;
+            const deltaY = targetY - centerY;
+            const dist = Math.hypot(deltaX, deltaY) || 1;
+            vx += (deltaX / dist) * CHASE_ACCEL;
+            vy += (deltaY / dist) * CHASE_ACCEL;
+            vx *= FRICTION;
+            vy *= FRICTION;
+
+            const speed = Math.hypot(vx, vy);
+            if (speed > MAX_SPEED) {
+                const factor = MAX_SPEED / speed;
+                vx *= factor;
+                vy *= factor;
+            }
+
+            if (Math.abs(vx) > 0.08) {
+                const movementSign = vx >= 0 ? 1 : -1;
+                facingScaleX = HUNTER_GIF_FACES_RIGHT_NATIVELY ? movementSign : -movementSign;
+            }
+            visualTiltDeg = Math.max(-9, Math.min(9, vy * 1.8));
+
+            x += vx;
+            y += vy;
+        }
+
+        const maxX = Math.max(0, window.innerWidth - cursorHunterGif.offsetWidth);
+        const maxY = Math.max(0, window.innerHeight - cursorHunterGif.offsetHeight);
+        if (x <= 0 || x >= maxX) vx *= -0.9;
+        if (y <= 0 || y >= maxY) vy *= -0.9;
+        keepInside();
+
+        if (!isCapturing && pointerKnown && timestamp >= captureCooldownUntil) {
+            const distanceToPointer = Math.hypot(pointerX - (x + halfW), pointerY - (y + halfH));
+            if (distanceToPointer <= CAPTURE_RADIUS) {
+                captureUntil = timestamp + CAPTURE_DURATION_MS;
+                captureCooldownUntil = timestamp + CAPTURE_DURATION_MS + CAPTURE_COOLDOWN_MS;
+                vx = 0;
+                vy = 0;
+            }
+        }
+
+        applyHunterTransform();
+        requestAnimationFrame(animateHunter);
+    };
+
+    const startHunter = () => {
+        if (hunterStarted) return;
+        hunterStarted = true;
+        keepInside();
+        applyHunterTransform();
+        requestAnimationFrame(animateHunter);
+    };
+
+    window.addEventListener('resize', keepInside);
+    cursorHunterGif.complete ? startHunter() : cursorHunterGif.addEventListener('load', startHunter, { once: true });
+    setTimeout(startHunter, 60);
 }
 
 const playerToggle = document.getElementById('player-toggle');
