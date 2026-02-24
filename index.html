@@ -4,13 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SHADOWS OF THE ABYSS</title>
-    <link rel="icon" type="image/png" href="https://cdn.discordapp.com/attachments/1473740311519039673/1474872572771438793/ChatGPT_Image_21_de_fev._de_2026_17_56_37.png?ex=699b6d9f&is=699a1c1f&hm=05bba2b88c6dc7876c06490c9170f7510f0da4d4ea12a71dc3dfdd40b4ea8807&">
+    <link rel="icon" type="image/png" href="assets/soa%20logo.png">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .abyss-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 59, 31, 0.3);
+        }
+        .abyss-progress-track {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .abyss-progress-fill {
+            height: 100%;
+            width: 0%;
+            background-image: repeating-linear-gradient(
+                90deg,
+                #ff3b1f,
+                #ff3b1f 6px,
+                transparent 6px,
+                transparent 9px
+            );
+            box-shadow: 0 0 15px rgba(255, 59, 31, 0.6);
+            transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .abyss-progress-text {
+            margin: 6px 0 0;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ff3b1f;
+            text-align: left;
+            font-weight: 700;
+        }
+    </style>
 </head>
 <body>
+    <div class="abyss-progress" id="abyss-progress" aria-live="polite">
+        <div class="abyss-progress-track">
+            <div class="abyss-progress-fill" id="abyss-progress-fill"></div>
+        </div>
+        <p class="abyss-progress-text" id="abyss-progress-text">Baixando sombras... 0%</p>
+    </div>
+
     <img
         id="dvd-gif"
-        src="https://cdn.discordapp.com/attachments/1325501562105106484/1413949848172105949/0906_12.gif?ex=699de9e9&is=699c9869&hm=adebf02b11c49b0e0d41a77d68a22eeb79650a272e7f42a81357f8930450d1c0&"
+        src="assets/0906_12.gif"
         alt=""
         aria-hidden="true"
         loading="eager"
@@ -72,6 +124,15 @@
 </div>
 		
     </main>
+
+    <footer class="secret-access" aria-label="Acesso secreto">
+        <label class="secret-access-label" for="secret-code-input">Digite o código do segredo</label>
+        <div class="secret-access-row">
+            <input id="secret-code-input" type="text" placeholder="..." autocomplete="off" spellcheck="false">
+            <button id="secret-code-submit" type="button">Enviar</button>
+        </div>
+        <p id="secret-code-feedback" aria-live="polite"></p>
+    </footer>
 
     <section class="video-modal" id="video-modal" aria-hidden="true">
         <div class="video-modal-backdrop" data-close-modal></div>
@@ -161,13 +222,44 @@
         </div>
     </section>
 
+    <section class="secret-choice-modal" id="secret-choice-modal" aria-hidden="true">
+        <div class="secret-choice-backdrop" data-close-secret-choice></div>
+        <div class="secret-choice-card" role="dialog" aria-modal="true" aria-labelledby="secret-choice-title">
+            <button class="secret-choice-close" type="button" data-close-secret-choice aria-label="Fechar">x</button>
+            <p class="secret-choice-kicker">Codigo tomate detectado</p>
+            <h3 id="secret-choice-title">Voce quer se juntar as sombras?</h3>
+            <img src="assets/abbys%20s%20ou%20n.png" alt="Abyss s ou n" class="secret-choice-image">
+            <div class="secret-choice-actions">
+                <button id="secret-choice-yes" class="secret-choice-btn secret-choice-yes" type="button">Sim</button>
+                <button id="secret-choice-no" class="secret-choice-btn secret-choice-no" type="button">Nao</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="secret-mimim-modal" id="secret-mimim-modal" aria-hidden="true">
+        <div class="secret-mimim-backdrop" data-close-secret-mimim></div>
+        <div class="secret-mimim-card" role="dialog" aria-modal="true" aria-labelledby="secret-mimim-title">
+            <button class="secret-mimim-close" type="button" data-close-secret-mimim aria-label="Fechar">x</button>
+            <h3 id="secret-mimim-title">quase la um pouco mais</h3>
+            <img src="assets/mimim.png" alt="mimim" class="secret-mimim-image">
+        </div>
+    </section>
+
     <div id="random-photo-layer" aria-hidden="true">
         <img
             id="random-photo"
-            src="https://cdn.discordapp.com/attachments/1473740311519039673/1474856214067286107/download.png?ex=699b5e62&is=699a0ce2&hm=1a86ac614c8abb1c2dfa343a9e5eaefc5fd48f8a2e3edd7f6bf69197649caf71&"
+            src="assets/foto-aleatoria.png"
             alt="Foto aleatoria"
         >
     </div>
+
+    <section class="soul-cookie-popup" id="soul-cookie-popup" aria-label="Aviso de cookies">
+        <p>Nós usamos cookies para monitorar sua alma. Aceitar?</p>
+        <div class="soul-cookie-actions">
+            <button type="button" class="soul-cookie-btn" data-cookie-accept>Sim</button>
+            <button type="button" class="soul-cookie-btn" data-cookie-accept>Com certeza</button>
+        </div>
+    </section>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="script.js"></script>

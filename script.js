@@ -29,6 +29,49 @@ const updateCountdown = () => {
 const interval = setInterval(updateCountdown, 1000);
 updateCountdown();
 
+const initAbyssProgressBar = () => {
+    const fill = document.getElementById('abyss-progress-fill');
+    const text = document.getElementById('abyss-progress-text');
+    if (!fill || !text) return;
+
+    let progress = 0;
+    let isErrorState = false;
+
+    const runLoading = () => {
+        if (isErrorState) return;
+
+        const jitter = (Math.random() - 0.5) * 1.5;
+        const baseIncrement = Math.random() * 0.15;
+        progress += baseIncrement + jitter;
+        
+        if (progress < 0) progress = 0;
+
+        if (progress >= 99) {
+            isErrorState = true;
+            fill.style.width = "100%";
+            text.innerText = "ERRO: CONEXÃO INTERROMPIDA. REINICIANDO DOWNLOAD...";
+            text.style.color = "#ffffff";
+            
+            setTimeout(() => {
+                progress = 0;
+                isErrorState = false;
+                text.style.color = "#ff3b1f";
+                runLoading();
+            }, 2500);
+            return;
+        }
+
+        fill.style.width = `${progress}%`;
+        text.innerText = `Baixando sombras... ${Math.floor(progress)}%`;
+
+        setTimeout(runLoading, 50 + Math.random() * 100);
+    };
+
+    runLoading();
+};
+
+initAbyssProgressBar();
+
 const videoModal = document.getElementById('video-modal');
 const launchVideo = document.getElementById('launch-video');
 const launchLink = document.querySelector('.launch-link');
@@ -52,6 +95,109 @@ const closeChessControls = document.querySelectorAll('[data-close-chess]');
 const badgeRunawayButton = document.getElementById('badge-runaway-button');
 const badgeButtonZone = document.getElementById('badge-button-zone');
 const closeModalControls = document.querySelectorAll('[data-close-modal]');
+const secretCodeInput = document.getElementById('secret-code-input');
+const secretCodeSubmit = document.getElementById('secret-code-submit');
+const secretCodeFeedback = document.getElementById('secret-code-feedback');
+const secretChoiceModal = document.getElementById('secret-choice-modal');
+const secretChoiceYes = document.getElementById('secret-choice-yes');
+const secretChoiceNo = document.getElementById('secret-choice-no');
+const closeSecretChoiceControls = document.querySelectorAll('[data-close-secret-choice]');
+const secretMimimModal = document.getElementById('secret-mimim-modal');
+const closeSecretMimimControls = document.querySelectorAll('[data-close-secret-mimim]');
+const soulCookiePopup = document.getElementById('soul-cookie-popup');
+const soulCookieAcceptButtons = document.querySelectorAll('[data-cookie-accept]');
+const launchCursorImagePath = 'assets/foxpool-goku-6028390_640.png';
+const LAUNCH_CURSOR_EFFECT_MS = 2000;
+const LAUNCH_GOKU_APPROACH_MS = 5000;
+const secretCodesTriggered = new Set();
+const allSecretCodes = ['aquarios', 'tomate', 'soa'];
+const mimimAudio = new Audio('https://www.myinstants.com/media/sounds/snore-mimimimimimi.mp3');
+mimimAudio.preload = 'auto';
+
+const fakeTerminalLogs = [
+    '[BOOT]: Inicializando modulo de vigilancia...',
+    '[REDE]: Tunel seguro estabelecido em 127.0.0.1:8080',
+    '[SISTEMA]: Usuario identificado.',
+    "[SISTEMA]: Iniciando download de 'foto-do-pe.zip'... (Brincadeira).",
+    '[STATUS]: Nenhuma ameaca real detectada. Curta o site :)'
+];
+
+const runFakeTerminalLogs = () => {
+    fakeTerminalLogs.forEach((line, index) => {
+        setTimeout(() => {
+            console.log(`%c${line}`, 'color:#6bff6b;font-family:Consolas,monospace;font-weight:700;');
+        }, 420 * index);
+    });
+};
+
+runFakeTerminalLogs();
+
+soulCookieAcceptButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        if (!soulCookiePopup) return;
+        soulCookiePopup.classList.add('is-hidden');
+    });
+});
+
+let launchCursorTimer = null;
+let launchCursorEffectId = 0;
+let launchPointerX = window.innerWidth / 2;
+let launchPointerY = window.innerHeight / 2;
+
+const launchGokuCursorGhost = document.createElement('img');
+launchGokuCursorGhost.id = 'launch-goku-cursor-ghost';
+launchGokuCursorGhost.src = launchCursorImagePath;
+launchGokuCursorGhost.alt = '';
+launchGokuCursorGhost.setAttribute('aria-hidden', 'true');
+launchGokuCursorGhost.decoding = 'async';
+launchGokuCursorGhost.loading = 'eager';
+document.body.appendChild(launchGokuCursorGhost);
+
+const updateLaunchPointer = (clientX, clientY) => {
+    if (typeof clientX !== 'number' || typeof clientY !== 'number') return;
+    launchPointerX = clientX;
+    launchPointerY = clientY;
+};
+
+document.addEventListener('pointermove', (event) => updateLaunchPointer(event.clientX, event.clientY));
+document.addEventListener('mousemove', (event) => updateLaunchPointer(event.clientX, event.clientY));
+document.addEventListener('touchmove', (event) => {
+    if (!event.touches || !event.touches[0]) return;
+    updateLaunchPointer(event.touches[0].clientX, event.touches[0].clientY);
+}, { passive: true });
+
+const clearLaunchCursorEffect = () => {
+    document.documentElement.classList.remove('cursor-prank-rotate', 'cursor-prank-goku');
+    document.body.classList.remove('cursor-prank-rotate', 'cursor-prank-goku');
+    launchGokuCursorGhost.classList.remove('is-visible', 'is-approaching');
+    launchGokuCursorGhost.style.left = '-100px';
+    launchGokuCursorGhost.style.top = '-100px';
+};
+
+const triggerLaunchCursorEffect = () => {
+    const effectId = ++launchCursorEffectId;
+    if (launchCursorTimer) clearTimeout(launchCursorTimer);
+    clearLaunchCursorEffect();
+    const useGokuCursor = Math.random() < 0.5;
+
+    if (useGokuCursor) {
+        launchGokuCursorGhost.style.left = `${launchPointerX}px`;
+        launchGokuCursorGhost.style.top = `${launchPointerY}px`;
+        document.documentElement.classList.add('cursor-prank-goku');
+        document.body.classList.add('cursor-prank-goku');
+        launchGokuCursorGhost.classList.add('is-visible');
+        void launchGokuCursorGhost.offsetWidth;
+        launchGokuCursorGhost.classList.add('is-approaching');
+    } else {
+        document.documentElement.classList.add('cursor-prank-rotate');
+        document.body.classList.add('cursor-prank-rotate');
+    }
+
+    launchCursorTimer = setTimeout(() => {
+        if (effectId !== launchCursorEffectId) return;
+        clearLaunchCursorEffect();
+    }, useGokuCursor ? LAUNCH_GOKU_APPROACH_MS : LAUNCH_CURSOR_EFFECT_MS);
+};
 
 const openVideo = (url, titleText, kickerText = 'Atenção') => {
     if (!videoModal || !launchVideo) return;
@@ -73,9 +219,127 @@ const closeVideoModal = () => {
     document.body.style.overflow = '';
 };
 
+const openSecretChoiceModal = () => {
+    if (!secretChoiceModal) return;
+    secretChoiceModal.classList.add('is-open');
+    secretChoiceModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+};
+
+const closeSecretChoiceModal = () => {
+    if (!secretChoiceModal) return;
+    secretChoiceModal.classList.remove('is-open');
+    secretChoiceModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+};
+
+const openSecretMimimModal = () => {
+    if (!secretMimimModal) return;
+    secretMimimModal.classList.add('is-open');
+    secretMimimModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    mimimAudio.currentTime = 0;
+    mimimAudio.play().catch(() => {});
+};
+
+const closeSecretMimimModal = () => {
+    if (!secretMimimModal) return;
+    secretMimimModal.classList.remove('is-open');
+    secretMimimModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    mimimAudio.pause();
+};
+
+const setSecretFeedback = (text) => {
+    if (!secretCodeFeedback) return;
+    secretCodeFeedback.textContent = text;
+    secretCodeFeedback.classList.add('is-visible');
+};
+
+const hasUnlockedAllSecretCodes = () => allSecretCodes.every((code) => secretCodesTriggered.has(code));
+
+const handleSecretCodeSubmit = () => {
+    if (!secretCodeInput) return;
+    const rawCode = secretCodeInput.value || '';
+    const code = rawCode.trim().toLowerCase();
+    if (!code) return;
+
+    if (hasUnlockedAllSecretCodes()) {
+        setSecretFeedback('quase la um pouco mais');
+        openSecretMimimModal();
+        secretCodeInput.value = '';
+        return;
+    }
+
+    if (code === 'aquarios' || code === 'quarios') {
+        secretCodesTriggered.add('aquarios');
+        setSecretFeedback('achou que ia ter farpas né');
+        openVideo('https://www.youtube-nocookie.com/embed/8hRmsQ-WjNc?autoplay=1&rel=0&modestbranding=1', 'achou que ia ter farpas né');
+        secretCodeInput.value = '';
+        return;
+    }
+
+    if (code === 'tomate') {
+        secretCodesTriggered.add('tomate');
+        setSecretFeedback('tomate detectado');
+        openSecretChoiceModal();
+        secretCodeInput.value = '';
+        return;
+    }
+
+    if (code === 'soa') {
+        secretCodesTriggered.add('soa');
+        setSecretFeedback('Membros do SOA até o dia 09/06');
+        openVideo('https://www.youtube.com/embed/tulP1Mc3-NU?autoplay=1', 'Membros do SOA até o dia 09/06');
+        secretCodeInput.value = '';
+        return;
+    }
+
+    setSecretFeedback('Quase... faltou o sacrifício');
+    openSecretMimimModal();
+    secretCodeInput.value = '';
+};
+
+if (secretChoiceYes) {
+    secretChoiceYes.addEventListener('click', () => {
+        window.open('https://discord.gg/ywXG6EC27Z', '_blank', 'noopener,noreferrer');
+        closeSecretChoiceModal();
+    });
+}
+
+if (secretChoiceNo) {
+    secretChoiceNo.addEventListener('click', closeSecretChoiceModal);
+}
+
+closeSecretChoiceControls.forEach((el) => el.addEventListener('click', closeSecretChoiceModal));
+closeSecretMimimControls.forEach((el) => el.addEventListener('click', closeSecretMimimModal));
+
+if (secretCodeSubmit) {
+    secretCodeSubmit.addEventListener('click', handleSecretCodeSubmit);
+}
+
+if (secretCodeInput) {
+    secretCodeInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        handleSecretCodeSubmit();
+    });
+}
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (secretChoiceModal && secretChoiceModal.classList.contains('is-open')) {
+        closeSecretChoiceModal();
+    }
+    if (secretMimimModal && secretMimimModal.classList.contains('is-open')) {
+        closeSecretMimimModal();
+    }
+});
+
 if (launchLink) {
     launchLink.addEventListener('click', (e) => {
         e.preventDefault();
+        triggerLaunchCursorEffect();
         openVideo('https://www.youtube.com/embed/fC7oUOUEEi4?autoplay=1', 'A equipe está trabalhando.');
     });
 }
@@ -1425,7 +1689,7 @@ if (dvdGif) {
     dvdGif.complete ? startBackgroundGif() : dvdGif.addEventListener('load', startBackgroundGif, { once: true });
 }
 
-const hunterGifSrc = 'https://cdn.discordapp.com/attachments/1473740311519039673/1475555348990398535/gifzin.gif?ex=699de981&is=699c9801&hm=ce56f11b1a4c44801630bc32e3aac7d527dafe079134bd156c899c1bafb000df&';
+const hunterGifSrc = 'assets/gifzin.gif';
 const hunterGifFallback = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='none'/%3E%3Cg%3E%3Cpath d='M48 12c12 0 22 8 24 20l2 14c1 10-3 20-11 26l-3 2v10c0 2-2 4-4 4H40c-2 0-4-2-4-4V74l-3-2c-8-6-12-16-11-26l2-14c2-12 12-20 24-20z' fill='%23202020'/%3E%3Crect x='28' y='38' width='40' height='24' rx='10' fill='%23101010'/%3E%3Ccircle cx='40' cy='50' r='4' fill='%23d9eef7'/%3E%3Ccircle cx='56' cy='50' r='4' fill='%23d9eef7'/%3E%3C/g%3E%3C/svg%3E";
 
 const cursorHunterGif = document.createElement('img');
@@ -1533,7 +1797,7 @@ cursorHunterGif.addEventListener('error', () => {
 
             const deltaX = targetX - centerX;
             const deltaY = targetY - centerY;
-            const dist = Math.hypot(deltaX, deltaY) || 1;
+            const dist = Math.hypot(deltaX, targetX) || 1;
             vx += (deltaX / dist) * CHASE_ACCEL;
             vy += (deltaY / dist) * CHASE_ACCEL;
             vx *= FRICTION;
@@ -1613,12 +1877,20 @@ document.addEventListener('keydown', event => {
 const randomPhotoLayer = document.getElementById('random-photo-layer');
 const randomPhoto = document.getElementById('random-photo');
 const scareAudio = new Audio('https://www.myinstants.com/media/sounds/xenoverse-goku-noise.mp3');
-const fixedPhotoUrl = 'https://cdn.discordapp.com/attachments/1457504428553670796/1475203496713261107/soa2..png?ex=699ca1d1&is=699b5051&hm=b41682ac655a58da7a257d759aa2c48d92616cbbb8876eaeb0223cb7800b3a14&';
+const fixedPhotoUrl = 'assets/foto-aleatoria.png';
+const fallbackPhotoDataUrl = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='450' viewBox='0 0 800 450'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23110f1a'/%3E%3Cstop offset='1' stop-color='%23312942'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='450' fill='url(%23bg)'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23f5f2ff' font-size='40' font-family='Arial,sans-serif'%3Efoto indisponivel%3C/text%3E%3C/svg%3E";
 
 let scareCycles = 0;
 let scareEnabled = false;
 let scareAudioUnlocked = false;
 scareAudio.preload = 'auto';
+
+if (randomPhoto) {
+    randomPhoto.addEventListener('error', () => {
+        if (randomPhoto.src === fallbackPhotoDataUrl) return;
+        randomPhoto.src = fallbackPhotoDataUrl;
+    });
+}
 
 const removeScareUnlockListeners = () => {
     document.removeEventListener('pointerdown', unlockScareAudio);
@@ -1715,22 +1987,3 @@ document.addEventListener('keydown', unlockScareAudio);
 document.addEventListener('contextmenu', event => {
     event.preventDefault();
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

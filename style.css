@@ -29,6 +29,59 @@ body {
     overflow: hidden;
 }
 
+html.cursor-prank-rotate,
+html.cursor-prank-rotate *,
+body.cursor-prank-rotate,
+body.cursor-prank-rotate * {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg transform='translate(14 14) rotate(180) translate(-14 -14)'%3E%3Cpath d='M4 4L24 14L15 15L12 24L4 4Z' fill='%23ffffff' stroke='%23000000' stroke-width='1.4'/%3E%3C/g%3E%3C/svg%3E") 4 4, auto !important;
+}
+
+html.cursor-prank-goku,
+html.cursor-prank-goku *,
+body.cursor-prank-goku,
+body.cursor-prank-goku * {
+    cursor: none !important;
+}
+
+#launch-goku-cursor-ghost {
+    position: fixed;
+    left: -100px;
+    top: -100px;
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+    border-radius: 50%;
+    pointer-events: none;
+    user-select: none;
+    transform: translate(-50%, -50%) scale(1);
+    transform-origin: center center;
+    z-index: 2147483647;
+    opacity: 0;
+}
+
+#launch-goku-cursor-ghost.is-visible {
+    opacity: 1;
+}
+
+#launch-goku-cursor-ghost.is-approaching {
+    animation: goku-approach-fade 5s ease-out forwards;
+}
+
+@keyframes goku-approach-fade {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    70% {
+        transform: translate(-50%, -50%) scale(9);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(12);
+        opacity: 0;
+    }
+}
+
 body.screen-shake {
     animation: screen-shake 0.09s linear infinite;
 }
@@ -1055,6 +1108,262 @@ h2 {
 
 .player-content.is-active {
     display: block;
+}
+
+.secret-access {
+    position: fixed;
+    left: 14px;
+    bottom: 12px;
+    z-index: 101;
+    width: min(340px, calc(100vw - 28px));
+    padding: 0.48rem 0.58rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(4px);
+    opacity: 0.15;
+    transition: opacity 180ms ease, border-color 180ms ease;
+}
+
+.secret-access:hover,
+.secret-access:focus-within {
+    opacity: 1;
+    border-color: rgba(255, 255, 255, 0.42);
+}
+
+.secret-access-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #e4d6c2;
+}
+
+.secret-access-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.35rem;
+}
+
+#secret-code-input {
+    min-width: 0;
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+#secret-code-submit {
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.33);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.68rem;
+}
+
+#secret-code-feedback {
+    margin: 0.35rem 0 0;
+    min-height: 1.1em;
+    font-size: 0.73rem;
+    color: #f7dcc2;
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+#secret-code-feedback.is-visible {
+    opacity: 1;
+}
+
+.secret-choice-modal,
+.secret-mimim-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 260;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+}
+
+.secret-choice-modal.is-open,
+.secret-mimim-modal.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.secret-choice-backdrop,
+.secret-mimim-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(5px);
+}
+
+.secret-choice-card,
+.secret-mimim-card {
+    position: relative;
+    width: min(520px, calc(100vw - 1.8rem));
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(160deg, rgba(13, 13, 13, 0.98), rgba(4, 4, 4, 0.98));
+    box-shadow: 0 24px 72px rgba(0, 0, 0, 0.78);
+    padding: 1rem 1rem 1.1rem;
+    overflow: hidden;
+}
+
+.secret-choice-close,
+.secret-mimim-close {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    cursor: pointer;
+}
+
+.secret-choice-kicker {
+    margin: 0;
+    color: #c8bda6;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.7rem;
+}
+
+.secret-choice-card h3,
+.secret-mimim-card h3 {
+    margin: 0.3rem 0 0.75rem;
+    font-family: "Bebas Neue", sans-serif;
+    font-size: clamp(1.35rem, 3.8vw, 2.25rem);
+    letter-spacing: 0.03em;
+}
+
+.secret-choice-image,
+.secret-mimim-image {
+    width: 100%;
+    max-height: min(46vh, 300px);
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.secret-choice-actions {
+    margin-top: 0.7rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+}
+
+.secret-choice-btn {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 10px;
+    padding: 0.58rem 0.9rem;
+    color: #fff;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+
+.secret-choice-no {
+    background: linear-gradient(120deg, #343434 0%, #505050 100%);
+}
+
+.secret-choice-yes {
+    position: relative;
+    background: linear-gradient(120deg, #070707 0%, #1a1a1a 100%);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.8), inset 0 0 12px rgba(0, 0, 0, 0.7);
+}
+
+.secret-choice-yes::before,
+.secret-choice-yes::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 90%;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(30, 30, 30, 0.7) 0%, rgba(10, 10, 10, 0) 70%);
+    transform: translateX(-50%) scale(0.5);
+    opacity: 0;
+    animation: smoke-rise 2.4s ease-out infinite;
+    pointer-events: none;
+}
+
+.secret-choice-yes::after {
+    width: 22px;
+    height: 22px;
+    left: 40%;
+    animation-delay: 0.6s;
+}
+
+.soul-cookie-popup {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 300;
+    width: min(430px, calc(100vw - 32px));
+    padding: 0.95rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: linear-gradient(160deg, rgba(10, 10, 10, 0.95), rgba(2, 2, 2, 0.95));
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.66);
+}
+
+.soul-cookie-popup p {
+    margin: 0;
+    color: #f2ece1;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.soul-cookie-actions {
+    display: flex;
+    gap: 0.55rem;
+    margin-top: 0.7rem;
+}
+
+.soul-cookie-btn {
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+
+.soul-cookie-popup.is-hidden {
+    display: none;
+}
+
+@keyframes smoke-rise {
+    0% {
+        transform: translate(-50%, 0) scale(0.5);
+        opacity: 0.1;
+    }
+    35% {
+        opacity: 0.35;
+    }
+    100% {
+        transform: translate(-50%, -30px) scale(1.35);
+        opacity: 0;
+    }
 }
 
 #random-photo-layer {
