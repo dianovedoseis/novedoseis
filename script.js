@@ -17,7 +17,7 @@ const updateCountdown = () => {
 
     const days = Math.floor(distance / (1000 * 60 * 60 * 24));
     const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const minutes = Math.floor((distance % (1000 * 60)) / (1000 * 60));
     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
     if(daysEl) daysEl.innerText = days;
@@ -110,9 +110,16 @@ const launchCursorImagePath = 'assets/foxpool-goku-6028390_640.png';
 const LAUNCH_CURSOR_EFFECT_MS = 2000;
 const LAUNCH_GOKU_APPROACH_MS = 5000;
 const secretCodesTriggered = new Set();
-const allSecretCodes = ['aquarios', 'tomate', 'soa'];
+const allSecretCodes = ['aquarios', 'tomate', 'soa', 'crota'];
 const mimimAudio = new Audio('https://www.myinstants.com/media/sounds/snore-mimimimimimi.mp3');
 mimimAudio.preload = 'auto';
+
+// --- LOGICA DO TERMINAL E SEQUÊNCIA DE CAOS (ABYSS) ---
+const fakeTerminal = document.getElementById('fake-terminal');
+const fakeTerminalOutput = document.getElementById('fake-terminal-output');
+const fakeTerminalClose = document.getElementById('fake-terminal-close');
+const chaosAudio = new Audio('https://www.myinstants.com/media/sounds/chicken-on-tree-screaming.mp3');
+let terminalInputBuffer = "";
 
 const fakeTerminalLogs = [
     '[BOOT]: Inicializando modulo de vigilancia...',
@@ -122,15 +129,104 @@ const fakeTerminalLogs = [
     '[STATUS]: Nenhuma ameaca real detectada. Curta o site :)'
 ];
 
+const startChaosSequence = () => {
+    document.body.classList.add('screen-shake');
+    document.documentElement.style.transition = "filter 0.2s, transform 5s linear";
+    
+    const chaosInterval = setInterval(() => {
+        const randomHue = Math.floor(Math.random() * 360);
+        document.documentElement.style.filter = `hue-rotate(${randomHue}deg) brightness(1.5) contrast(2)`;
+        document.documentElement.style.transform = `rotate(${Math.random() * 360}deg) scale(${1 + Math.random()})`;
+    }, 100);
+
+    chaosAudio.play().catch(() => {});
+
+    chaosAudio.onended = () => {
+        clearInterval(chaosInterval);
+        document.documentElement.style.transition = "all 0.5s cubic-bezier(0.15, 0.85, 0.15, 1)";
+        document.documentElement.style.transform = "scaleX(0.001) scaleY(0.001)";
+        document.documentElement.style.background = "white";
+        document.body.style.opacity = "0";
+
+        setTimeout(() => {
+            window.open('', '_self');
+            window.close();
+            document.body.innerHTML = '';
+            location.href = 'about:blank';
+        }, 600);
+    };
+};
+
 const runFakeTerminalLogs = () => {
+    if (!fakeTerminalOutput) return;
+    fakeTerminalOutput.textContent = "";
+    
     fakeTerminalLogs.forEach((line, index) => {
         setTimeout(() => {
             console.log(`%c${line}`, 'color:#6bff6b;font-family:Consolas,monospace;font-weight:700;');
+            fakeTerminalOutput.textContent += line + "\n";
+            fakeTerminalOutput.scrollTop = fakeTerminalOutput.scrollHeight;
+            if (index === fakeTerminalLogs.length - 1) {
+                setTimeout(startChaosSequence, 500);
+            }
         }, 420 * index);
     });
 };
 
-runFakeTerminalLogs();
+// --- LOGICA SKYRIM (CROTA) ---
+const triggerSkyrimEasterEgg = () => {
+    const skyrimVid = document.createElement('video');
+    skyrimVid.src = 'assets/skyrin.mp4';
+    skyrimVid.style.position = 'fixed';
+    skyrimVid.style.top = '0';
+    skyrimVid.style.left = '0';
+    skyrimVid.style.width = '100vw';
+    skyrimVid.style.height = '100vh';
+    skyrimVid.style.backgroundColor = 'black';
+    skyrimVid.style.zIndex = '999999';
+    skyrimVid.style.opacity = '0';
+    skyrimVid.style.transition = 'opacity 1.5s ease-in';
+    
+    document.body.appendChild(skyrimVid);
+    document.body.style.transition = 'background-color 1s ease';
+    document.body.style.backgroundColor = 'black';
+    
+    setTimeout(() => {
+        skyrimVid.style.opacity = '1';
+        skyrimVid.play();
+        if (skyrimVid.requestFullscreen) skyrimVid.requestFullscreen();
+        else if (skyrimVid.webkitRequestFullscreen) skyrimVid.webkitRequestFullscreen();
+    }, 1000);
+
+    skyrimVid.onended = () => {
+        if (document.exitFullscreen) document.exitFullscreen();
+        skyrimVid.remove();
+        document.body.style.backgroundColor = '';
+    };
+};
+
+// Captura de teclado para o buffer (Abyss)
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    terminalInputBuffer += e.key.toLowerCase();
+    if (terminalInputBuffer.length > 15) terminalInputBuffer = terminalInputBuffer.slice(-15);
+
+    if (terminalInputBuffer.includes('abyss')) {
+        terminalInputBuffer = "";
+        if (fakeTerminal) {
+            fakeTerminal.classList.add('is-open');
+            fakeTerminal.setAttribute('aria-hidden', 'false');
+            runFakeTerminalLogs();
+        }
+    }
+});
+
+if (fakeTerminalClose) {
+    fakeTerminalClose.addEventListener('click', () => {
+        fakeTerminal.classList.remove('is-open');
+        fakeTerminal.setAttribute('aria-hidden', 'true');
+    });
+}
 
 soulCookieAcceptButtons.forEach((button) => {
     button.addEventListener('click', () => {
@@ -258,6 +354,7 @@ const setSecretFeedback = (text) => {
 
 const hasUnlockedAllSecretCodes = () => allSecretCodes.every((code) => secretCodesTriggered.has(code));
 
+// --- GESTÃO DE CÓDIGOS DE INPUT (TOMATE, SOA, AQUARIOS, CROTA) ---
 const handleSecretCodeSubmit = () => {
     if (!secretCodeInput) return;
     const rawCode = secretCodeInput.value || '';
@@ -291,6 +388,15 @@ const handleSecretCodeSubmit = () => {
         secretCodesTriggered.add('soa');
         setSecretFeedback('Membros do SOA até o dia 09/06');
         openVideo('https://www.youtube.com/embed/tulP1Mc3-NU?autoplay=1', 'Membros do SOA até o dia 09/06');
+        secretCodeInput.value = '';
+        return;
+    }
+
+    // INTEGRAÇÃO CROTA
+    if (code === 'crota') {
+        secretCodesTriggered.add('crota');
+        setSecretFeedback('Hey, you. You\'re finally awake.');
+        triggerSkyrimEasterEgg();
         secretCodeInput.value = '';
         return;
     }
@@ -1308,7 +1414,7 @@ if (chessTrigger && chessModal) {
                         from: move.from,
                         to: move.to,
                         promotion: move.promotion || promotion || 'q',
-                        fen: game.fen()
+                        caption: game.fen()
                     });
                 }
                 renderBoard();
