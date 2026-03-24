@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sobre os Bots | SHADOWS OF THE ABYSS</title>
+    <link rel="icon" type="image/png" href="assets/logo_nova_foda.png">
+    <link rel="stylesheet" href="bots.css">
+</head>
+<body class="bots-page">
+    <div class="bot-orbit bot-orbit-left" aria-hidden="true"></div>
+    <div class="bot-orbit bot-orbit-right" aria-hidden="true"></div>
+
+    <main class="bots-shell">
+        <header class="bots-hero">
+            <a class="back-link" href="index.html">Voltar para a home</a>
+            <p class="bots-kicker">Documentacao oficial</p>
+            <h1>Sobre os bots</h1>
+            <p class="bots-intro">
+                Escolha um dos bots abaixo para abrir os documentos oficiais, ver a imagem do bot
+                e confirmar a leitura dos arquivos.
+            </p>
+        </header>
+
+        <section class="bot-selector" aria-label="Selecao de bots">
+            <a class="bot-card is-active" href="bots.html?bot=guardian" data-bot-link="guardian">
+                <img src="assets/abyssguardianlogo.png" alt="Logo do Abyss Guardian" class="bot-card-image">
+                <div class="bot-card-copy">
+                    <p class="bot-card-kicker">Sobre o bot</p>
+                    <h2>Abyss Guardian</h2>
+                    <p>Moderacao, automacao e recursos personalizados para servidores do Discord.</p>
+                </div>
+            </a>
+
+            <a class="bot-card" href="bots.html?bot=dj" data-bot-link="dj">
+                <img src="assets/abyssDJ.png" alt="Logo do Abyss DJ" class="bot-card-image">
+                <div class="bot-card-copy">
+                    <p class="bot-card-kicker">Sobre o bot</p>
+                    <h2>Abyss DJ</h2>
+                    <p>Musica, filas e controle de reproducao com integracoes de audio.</p>
+                </div>
+            </a>
+        </section>
+
+        <section class="docs-shell" aria-labelledby="selected-bot-name">
+            <div class="docs-head">
+                <div class="docs-bot">
+                    <img
+                        id="selected-bot-image"
+                        class="selected-bot-image"
+                        src="assets/abyssguardianlogo.png"
+                        alt="Logo do bot selecionado"
+                    >
+                    <div class="docs-copy">
+                        <p class="docs-kicker" id="selected-bot-kicker">Bot selecionado</p>
+                        <h2 id="selected-bot-name">Abyss Guardian</h2>
+                        <p id="selected-bot-description">
+                            Moderacao, automacao e recursos personalizados para servidores do Discord.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="docs-links">
+                    <a id="doc-one-source" class="doc-source-link" href="assets/abyss_guardian_terms.md" target="_blank" rel="noreferrer">
+                        Abrir documento 1 (.md)
+                    </a>
+                    <a id="doc-two-source" class="doc-source-link" href="assets/abyss_guardian_privacy.md" target="_blank" rel="noreferrer">
+                        Abrir documento 2 (.md)
+                    </a>
+                </div>
+            </div>
+
+            <p class="docs-feedback" id="docs-feedback" aria-live="polite">
+                Os documentos do Abyss Guardian estao sendo preparados.
+            </p>
+
+            <div class="docs-grid">
+                <article class="doc-panel" aria-labelledby="doc-one-title">
+                    <div class="doc-panel-head">
+                        <p class="doc-panel-kicker">Documento 1</p>
+                        <h3 id="doc-one-title">Termos de Servico</h3>
+                    </div>
+                    <div class="doc-scroll">
+                        <div class="doc-content is-loading" id="doc-one-content">
+                            Carregando documento...
+                        </div>
+                    </div>
+                </article>
+
+                <article class="doc-panel" aria-labelledby="doc-two-title">
+                    <div class="doc-panel-head">
+                        <p class="doc-panel-kicker">Documento 2</p>
+                        <h3 id="doc-two-title">Politica de Privacidade</h3>
+                    </div>
+                    <div class="doc-scroll">
+                        <div class="doc-content is-loading" id="doc-two-content">
+                            Carregando documento...
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <div class="agree-row">
+                <button class="agree-button" id="agree-button" type="button">
+                    Concordo com os documentos
+                </button>
+                <p class="agree-status" id="agree-status" aria-live="polite">
+                    Nenhuma concordancia registrada neste navegador.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <script src="bots.js"></script>
+</body>
+</html>

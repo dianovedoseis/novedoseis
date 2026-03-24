@@ -2,8 +2,11 @@
 const hoursEl = document.getElementById('hours');
 const minutesEl = document.getElementById('minutes');
 const secondsEl = document.getElementById('seconds');
+const countdownEl = document.getElementById('countdown');
+const countdownCards = Array.from(document.querySelectorAll('[data-countdown-unit]'));
+let countdownRitualReady = false;
 
-const countDownDate = new Date("2026-06-09T00:00:00").getTime();
+const countDownDate = new Date("2026-06-09T14:00:00-03:00").getTime();
 
 const updateCountdown = () => {
     const now = new Date().getTime();
@@ -17,60 +20,175 @@ const updateCountdown = () => {
 
     const days = Math.floor(distance / (1000 * 60 * 60 * 24));
     const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((distance % (1000 * 60)) / (1000 * 60));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
     if(daysEl) daysEl.innerText = days;
     if(hoursEl) hoursEl.innerText = hours;
     if(minutesEl) minutesEl.innerText = minutes;
     if(secondsEl) secondsEl.innerText = seconds;
+    if (countdownRitualReady) syncCountdownRitualState();
 };
 
 const interval = setInterval(updateCountdown, 1000);
 updateCountdown();
 
-const initAbyssProgressBar = () => {
-    const fill = document.getElementById('abyss-progress-fill');
-    const text = document.getElementById('abyss-progress-text');
-    if (!fill || !text) return;
+const defaultPageTitle = document.title;
+let faviconLink = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel*="icon"]');
+const defaultFaviconHref = faviconLink ? faviconLink.href : '';
+let tabWatcherRestoreTimer = null;
 
-    let progress = 0;
-    let isErrorState = false;
-
-    const runLoading = () => {
-        if (isErrorState) return;
-
-        const jitter = (Math.random() - 0.5) * 1.5;
-        const baseIncrement = Math.random() * 0.15;
-        progress += baseIncrement + jitter;
-        
-        if (progress < 0) progress = 0;
-
-        if (progress >= 99) {
-            isErrorState = true;
-            fill.style.width = "100%";
-            text.innerText = "ERRO: CONEXÃO INTERROMPIDA. REINICIANDO DOWNLOAD...";
-            text.style.color = "#ffffff";
-            
-            setTimeout(() => {
-                progress = 0;
-                isErrorState = false;
-                text.style.color = "#ff3b1f";
-                runLoading();
-            }, 2500);
-            return;
-        }
-
-        fill.style.width = `${progress}%`;
-        text.innerText = `Baixando sombras... ${Math.floor(progress)}%`;
-
-        setTimeout(runLoading, 50 + Math.random() * 100);
-    };
-
-    runLoading();
+const ensureFaviconLink = () => {
+    if (faviconLink) return faviconLink;
+    const link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
+    faviconLink = link;
+    return faviconLink;
 };
 
-initAbyssProgressBar();
+const createWatcherFavicon = (eyeColor) => {
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+            <defs>
+                <radialGradient id="glow" cx="50%" cy="50%" r="56%">
+                    <stop offset="0%" stop-color="${eyeColor}" stop-opacity="0.34"/>
+                    <stop offset="60%" stop-color="${eyeColor}" stop-opacity="0.08"/>
+                    <stop offset="100%" stop-color="${eyeColor}" stop-opacity="0"/>
+                </radialGradient>
+                <linearGradient id="sclera" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#f4eee8"/>
+                    <stop offset="100%" stop-color="#d8ccc3"/>
+                </linearGradient>
+                <radialGradient id="iris" cx="50%" cy="50%" r="66%">
+                    <stop offset="0%" stop-color="#ffd3cb"/>
+                    <stop offset="28%" stop-color="${eyeColor}"/>
+                    <stop offset="72%" stop-color="#7a1216"/>
+                    <stop offset="100%" stop-color="#2a070b"/>
+                </radialGradient>
+            </defs>
+            <circle cx="32" cy="32" r="22" fill="url(#glow)"/>
+            <path d="M7 32c6-10 15-16 25-16s19 6 25 16c-6 10-15 16-25 16S13 42 7 32Z" fill="#140d0f" stroke="#6b2422" stroke-opacity="0.34" stroke-width="1.3"/>
+            <path d="M10 32c5-8 13-13 22-13s17 5 22 13c-5 8-13 13-22 13S15 40 10 32Z" fill="url(#sclera)"/>
+            <ellipse cx="32" cy="32" rx="11" ry="10" fill="url(#iris)"/>
+            <ellipse cx="32" cy="32" rx="3.7" ry="8.8" fill="#080406"/>
+            <ellipse cx="31.2" cy="31.5" rx="1.1" ry="3.6" fill="#18070a" opacity="0.7"/>
+            <circle cx="36.6" cy="27.8" r="1.9" fill="#fff1ec" opacity="0.95"/>
+            <path d="M10 32c5-8 13-13 22-13s17 5 22 13" fill="none" stroke="#2b1214" stroke-width="2.1" stroke-linecap="round" opacity="0.7"/>
+            <path d="M10 32c5 8 13 13 22 13s17-5 22-13" fill="none" stroke="#2b1214" stroke-width="2.1" stroke-linecap="round" opacity="0.48"/>
+        </svg>
+    `;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+const watcherFaviconHidden = createWatcherFavicon('#ff3b31');
+const watcherFaviconReturn = createWatcherFavicon('#ff6e64');
+
+const setTabWatcherState = ({ title, faviconHref }) => {
+    document.title = title;
+    const icon = ensureFaviconLink();
+    icon.type = faviconHref.startsWith('data:image/svg+xml') ? 'image/svg+xml' : 'image/png';
+    icon.href = faviconHref;
+};
+
+const restoreDefaultTabState = () => {
+    if (tabWatcherRestoreTimer) {
+        clearTimeout(tabWatcherRestoreTimer);
+        tabWatcherRestoreTimer = null;
+    }
+    setTabWatcherState({
+        title: defaultPageTitle,
+        faviconHref: defaultFaviconHref
+    });
+};
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (tabWatcherRestoreTimer) {
+            clearTimeout(tabWatcherRestoreTimer);
+            tabWatcherRestoreTimer = null;
+        }
+        setTabWatcherState({
+            title: 'VOLTE',
+            faviconHref: watcherFaviconHidden
+        });
+        return;
+    }
+
+    setTabWatcherState({
+        title: 'NOS VIMOS',
+        faviconHref: watcherFaviconReturn
+    });
+    tabWatcherRestoreTimer = setTimeout(() => {
+        restoreDefaultTabState();
+    }, 1400);
+});
+
+const cursorShadowAura = document.createElement('div');
+cursorShadowAura.id = 'cursor-shadow-aura';
+cursorShadowAura.setAttribute('aria-hidden', 'true');
+document.body.appendChild(cursorShadowAura);
+
+let auraTargetX = window.innerWidth / 2;
+let auraTargetY = window.innerHeight / 2;
+let auraCurrentX = auraTargetX;
+let auraCurrentY = auraTargetY;
+let auraVisible = false;
+let auraPulseTimer = null;
+
+const showCursorAura = () => {
+    if (auraVisible) return;
+    auraVisible = true;
+    document.body.classList.add('has-cursor-aura');
+    cursorShadowAura.classList.add('is-visible');
+};
+
+const hideCursorAura = () => {
+    auraVisible = false;
+    document.body.classList.remove('has-cursor-aura');
+    cursorShadowAura.classList.remove('is-visible');
+};
+
+const pulseCursorAura = () => {
+    if (!auraVisible) return;
+    cursorShadowAura.classList.remove('is-pulsing');
+    void cursorShadowAura.offsetWidth;
+    cursorShadowAura.classList.add('is-pulsing');
+    if (auraPulseTimer) {
+        clearTimeout(auraPulseTimer);
+    }
+    auraPulseTimer = setTimeout(() => {
+        cursorShadowAura.classList.remove('is-pulsing');
+        auraPulseTimer = null;
+    }, 540);
+};
+
+const updateAuraTarget = (clientX, clientY) => {
+    if (typeof clientX !== 'number' || typeof clientY !== 'number') return;
+    auraTargetX = clientX;
+    auraTargetY = clientY;
+    document.documentElement.style.setProperty('--cursor-reveal-x', `${clientX}px`);
+    document.documentElement.style.setProperty('--cursor-reveal-y', `${clientY}px`);
+    showCursorAura();
+};
+
+const animateCursorAura = () => {
+    auraCurrentX += (auraTargetX - auraCurrentX) * 0.08;
+    auraCurrentY += (auraTargetY - auraCurrentY) * 0.08;
+    cursorShadowAura.style.transform = `translate3d(${auraCurrentX}px, ${auraCurrentY}px, 0) translate(-50%, -50%)`;
+    requestAnimationFrame(animateCursorAura);
+};
+
+document.addEventListener('pointermove', (event) => updateAuraTarget(event.clientX, event.clientY));
+document.addEventListener('mousemove', (event) => updateAuraTarget(event.clientX, event.clientY));
+document.addEventListener('pointerdown', pulseCursorAura);
+document.addEventListener('touchmove', (event) => {
+    if (!event.touches || !event.touches[0]) return;
+    updateAuraTarget(event.touches[0].clientX, event.touches[0].clientY);
+}, { passive: true });
+window.addEventListener('blur', hideCursorAura);
+document.addEventListener('mouseleave', hideCursorAura);
+animateCursorAura();
 
 const videoModal = document.getElementById('video-modal');
 const launchVideo = document.getElementById('launch-video');
@@ -98,6 +216,10 @@ const closeModalControls = document.querySelectorAll('[data-close-modal]');
 const secretCodeInput = document.getElementById('secret-code-input');
 const secretCodeSubmit = document.getElementById('secret-code-submit');
 const secretCodeFeedback = document.getElementById('secret-code-feedback');
+const secretAccessHint = document.getElementById('secret-access-hint');
+const inviteCodeInput = document.getElementById('invite-code-input');
+const inviteCodeSubmit = document.getElementById('invite-code-submit');
+const inviteCodeFeedback = document.getElementById('invite-code-feedback');
 const secretChoiceModal = document.getElementById('secret-choice-modal');
 const secretChoiceYes = document.getElementById('secret-choice-yes');
 const secretChoiceNo = document.getElementById('secret-choice-no');
@@ -106,13 +228,421 @@ const secretMimimModal = document.getElementById('secret-mimim-modal');
 const closeSecretMimimControls = document.querySelectorAll('[data-close-secret-mimim]');
 const soulCookiePopup = document.getElementById('soul-cookie-popup');
 const soulCookieAcceptButtons = document.querySelectorAll('[data-cookie-accept]');
+const abyssProgressFill = document.getElementById('abyss-progress-fill');
+const abyssProgressText = document.getElementById('abyss-progress-text');
+const shadowToast = document.getElementById('shadow-toast');
+const shadowChaseStatus = document.getElementById('shadow-chase-status');
+const fragmentInventoryCount = document.getElementById('fragment-inventory-count');
+const fragmentGrid = document.getElementById('fragment-grid');
+const fragmentInventoryNote = document.getElementById('fragment-inventory-note');
 const launchCursorImagePath = 'assets/foxpool-goku-6028390_640.png';
 const LAUNCH_CURSOR_EFFECT_MS = 2000;
 const LAUNCH_GOKU_APPROACH_MS = 5000;
-const secretCodesTriggered = new Set();
+const DISCORD_INVITE_CODE = 'jVc7Dd3Q9K';
+const inviteFragments = Array.from(DISCORD_INVITE_CODE);
+const DISCORD_INVITE_URL = `https://discord.gg/${DISCORD_INVITE_CODE}`;
 const allSecretCodes = ['aquarios', 'tomate', 'soa', 'crota'];
+const SHADOW_STORAGE_KEY = 'soa-shadow-arg-v3';
+const shadowTrials = [
+    {
+        id: 'dvd',
+        name: 'Eco VHS',
+        clue: 'o espectro que rebate nas bordas',
+        fragment: inviteFragments[0]
+    },
+    {
+        id: 'badge',
+        name: 'Emblema fugitivo',
+        clue: 'o emblema odeia maos lentas',
+        fragment: inviteFragments[1]
+    },
+    {
+        id: 'tag',
+        name: 'Tag do Abyss',
+        clue: 'duas batidas em ABYSS provocam a caca',
+        fragment: inviteFragments[2]
+    },
+    {
+        id: 'terminal',
+        name: 'Terminal falso',
+        clue: 'o nome do abismo desperta a maquina',
+        fragment: inviteFragments[3]
+    },
+    {
+        id: 'parchment',
+        name: 'Ritual 09 > 06',
+        clue: 'o tempo cede quando o nono minuto chama o sexto segundo',
+        fragment: inviteFragments[4]
+    },
+    {
+        id: 'aquarios',
+        name: 'Eco aquatico',
+        clue: 'uma sombra responde a constelacoes',
+        fragment: inviteFragments[5]
+    },
+    {
+        id: 'tomate',
+        name: 'Eco vermelho',
+        clue: 'uma sombra responde a um fruto vermelho',
+        fragment: inviteFragments[6]
+    },
+    {
+        id: 'soa',
+        name: 'Juramento',
+        clue: 'algumas portas reconhecem siglas',
+        fragment: inviteFragments[7]
+    },
+    {
+        id: 'crota',
+        name: 'Despertar',
+        clue: 'um codigo acorda um prisioneiro antigo',
+        fragment: inviteFragments[8]
+    },
+    {
+        id: 'chess3',
+        name: 'Trinca no tabuleiro',
+        clue: 'mexa tres pecas no xadrez e o tabuleiro responde',
+        fragment: inviteFragments[9]
+    }
+];
+const shadowTrialMap = new Map(shadowTrials.map((trial) => [trial.id, trial]));
+const readShadowState = () => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(SHADOW_STORAGE_KEY) || '{}');
+        const solved = Array.isArray(parsed.solved)
+            ? parsed.solved.filter((id) => shadowTrialMap.has(id))
+            : [];
+        const chessTrialMoveProgress = Number(parsed.chessTrialMoveProgress) || 0;
+        return { solved, chessTrialMoveProgress };
+    } catch (error) {
+        return { solved: [], chessTrialMoveProgress: 0 };
+    }
+};
+const shadowState = readShadowState();
+const solvedShadowTrials = new Set(shadowState.solved);
+const secretCodesTriggered = new Set(
+    shadowState.solved.filter((id) => allSecretCodes.includes(id))
+);
+let chessTrialMoveProgress = shadowState.chessTrialMoveProgress;
+let shadowToastTimer = null;
+let shadowChaseStatusTimer = null;
+let shadowRecentUnlockId = null;
+let shadowRecentUnlockTimer = null;
 const mimimAudio = new Audio('https://www.myinstants.com/media/sounds/snore-mimimimimimi.mp3');
 mimimAudio.preload = 'auto';
+
+const saveShadowState = () => {
+    try {
+        localStorage.setItem(SHADOW_STORAGE_KEY, JSON.stringify({
+            solved: shadowTrials
+                .map((trial) => trial.id)
+                .filter((id) => solvedShadowTrials.has(id)),
+            chessTrialMoveProgress
+        }));
+    } catch (error) {
+        console.warn('Nao foi possivel salvar o progresso das sombras.', error);
+    }
+};
+
+const normalizeInviteCandidate = (value) => (
+    value
+        .trim()
+        .replace(/^https?:\/\/(www\.)?discord\.gg\//i, '')
+        .replace(/^discord\.gg\//i, '')
+        .replace(/\s+/g, '')
+);
+
+const getShadowCompletionRatio = () => (
+    shadowTrials.length ? solvedShadowTrials.size / shadowTrials.length : 0
+);
+
+const showShadowToast = (message, duration = 2600) => {
+    if (!shadowToast) return;
+    if (shadowToastTimer) clearTimeout(shadowToastTimer);
+    shadowToast.textContent = message;
+    shadowToast.classList.add('is-visible');
+    shadowToastTimer = setTimeout(() => {
+        shadowToast.classList.remove('is-visible');
+    }, duration);
+};
+
+const setShadowChaseMessage = (message = '', { persist = false } = {}) => {
+    if (!shadowChaseStatus) return;
+    if (shadowChaseStatusTimer) {
+        clearTimeout(shadowChaseStatusTimer);
+        shadowChaseStatusTimer = null;
+    }
+    shadowChaseStatus.textContent = message;
+    shadowChaseStatus.classList.toggle('is-visible', Boolean(message));
+    if (message && !persist) {
+        shadowChaseStatusTimer = setTimeout(() => {
+            shadowChaseStatus.classList.remove('is-visible');
+        }, 2200);
+    }
+};
+
+const updateSecretAccessHint = () => {
+    if (!secretAccessHint) return;
+    if (solvedShadowTrials.size >= shadowTrials.length) {
+        secretAccessHint.textContent = 'os ecos ja acordaram';
+        return;
+    }
+
+    const nextClue = shadowTrials
+        .filter((trial) => !solvedShadowTrials.has(trial.id))
+        .map((trial) => trial.clue)[0];
+
+    secretAccessHint.textContent = nextClue || 'as sombras escutam';
+};
+
+const appendFragmentToInput = (fragment) => {
+    if (!inviteCodeInput || !fragment) return;
+    inviteCodeInput.value += fragment;
+    inviteCodeInput.focus();
+};
+
+const setFragmentInventoryMessage = (text) => {
+    if (!fragmentInventoryNote) return;
+    fragmentInventoryNote.textContent = text;
+};
+
+const renderFragmentInventory = () => {
+    if (fragmentInventoryCount) {
+        fragmentInventoryCount.textContent = `${solvedShadowTrials.size}/${shadowTrials.length}`;
+    }
+
+    if (!fragmentGrid) return;
+    const fragmentItems = shadowTrials.map((trial, index) => {
+        const isUnlocked = solvedShadowTrials.has(trial.id);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `fragment-chip ${isUnlocked ? 'is-unlocked' : 'is-locked'}`;
+        if (shadowRecentUnlockId === trial.id) chip.classList.add('is-recent');
+
+        const name = document.createElement('span');
+        name.className = 'fragment-slot-name';
+        name.textContent = `${String(index + 1).padStart(2, '0')} ${trial.name}`;
+
+        const meta = document.createElement('span');
+        meta.className = 'fragment-slot-meta';
+        meta.textContent = isUnlocked ? 'clique para inserir' : 'selado';
+
+        const value = document.createElement('span');
+        value.className = 'fragment-slot-value';
+        value.textContent = isUnlocked ? trial.fragment : '??';
+
+        chip.append(name, meta, value);
+        chip.addEventListener('click', () => {
+            if (isUnlocked) {
+                appendFragmentToInput(trial.fragment);
+                setFragmentInventoryMessage(`Fragmento ${trial.fragment} inserido na montagem.`);
+            } else {
+                setFragmentInventoryMessage(`Dica ${String(index + 1).padStart(2, '0')}: ${trial.clue}.`);
+            }
+        });
+        return chip;
+    });
+
+    fragmentGrid.replaceChildren(...fragmentItems);
+
+    if (fragmentInventoryNote) {
+        fragmentInventoryNote.textContent = solvedShadowTrials.size >= shadowTrials.length
+            ? 'Convite completo. Monte e abra pela caixa acima.'
+            : 'Clique em um selo para ouvir a dica dele.';
+    }
+};
+
+const renderAbyssProgressBar = () => {
+    if (!abyssProgressFill || !abyssProgressText) return;
+    const percentage = Math.round(getShadowCompletionRatio() * 100);
+    abyssProgressFill.style.width = `${percentage}%`;
+    abyssProgressText.innerText = solvedShadowTrials.size >= shadowTrials.length
+        ? `Convite completo. ${shadowTrials.length}/${shadowTrials.length} fragmentos.`
+        : `Fragmentos nas sombras... ${solvedShadowTrials.size}/${shadowTrials.length} (${percentage}%)`;
+};
+
+const renderShadowArg = () => {
+    renderAbyssProgressBar();
+    renderFragmentInventory();
+    updateSecretAccessHint();
+};
+
+const unlockShadowTrial = (trialId, {
+    toast,
+    feedback,
+    modalText,
+    silent = false
+} = {}) => {
+    const trial = shadowTrialMap.get(trialId);
+    if (!trial) return false;
+    if (solvedShadowTrials.has(trialId)) {
+        if (!silent && feedback) setSecretFeedback(feedback);
+        return false;
+    }
+
+    solvedShadowTrials.add(trialId);
+    if (allSecretCodes.includes(trialId)) secretCodesTriggered.add(trialId);
+    saveShadowState();
+    shadowRecentUnlockId = trialId;
+    if (shadowRecentUnlockTimer) clearTimeout(shadowRecentUnlockTimer);
+    shadowRecentUnlockTimer = setTimeout(() => {
+        shadowRecentUnlockId = null;
+        renderFragmentInventory();
+    }, 1600);
+    renderShadowArg();
+
+    const unlockMessage = toast || `Fragmento ${trial.fragment} recuperado: ${trial.name}.`;
+    showShadowToast(unlockMessage);
+    if (feedback) setSecretFeedback(feedback);
+    if (modalText) setShadowChaseMessage(modalText);
+    return true;
+};
+
+const COUNTDOWN_RITUAL_TRIAL_ID = 'parchment';
+const COUNTDOWN_RITUAL_MINUTES = 9;
+const COUNTDOWN_RITUAL_SECONDS = 6;
+let countdownRitualStep = 0;
+
+function getCountdownCard(unit) {
+    return countdownCards.find((card) => card.dataset.countdownUnit === unit) || null;
+}
+
+function getCountdownUnitValue(unit) {
+    const valueMap = {
+        days: daysEl,
+        hours: hoursEl,
+        minutes: minutesEl,
+        seconds: secondsEl
+    };
+    return valueMap[unit]?.textContent?.trim() || '';
+}
+
+function getCountdownUnitNumber(unit) {
+    return Number.parseInt(getCountdownUnitValue(unit), 10);
+}
+
+function updateCountdownRitualCards() {
+    if (!countdownCards.length) return;
+
+    countdownCards.forEach((card) => {
+        card.classList.remove('is-armed', 'is-ritual-target', 'is-solved');
+    });
+
+    if (solvedShadowTrials.has(COUNTDOWN_RITUAL_TRIAL_ID)) {
+        getCountdownCard('minutes')?.classList.add('is-solved');
+        getCountdownCard('seconds')?.classList.add('is-solved');
+        return;
+    }
+
+    if (countdownRitualStep === 1) {
+        getCountdownCard('minutes')?.classList.add('is-armed');
+        getCountdownCard('seconds')?.classList.add('is-ritual-target');
+        return;
+    }
+
+    getCountdownCard('minutes')?.classList.add('is-ritual-target');
+}
+
+function resetCountdownRitual({
+    toast = '',
+    keepStatus = false
+} = {}) {
+    countdownRitualStep = 0;
+    updateCountdownRitualCards();
+    if (!keepStatus) setShadowChaseMessage('');
+    if (toast) showShadowToast(toast, 2000);
+}
+
+function syncCountdownRitualState() {
+    if (!countdownRitualReady) return;
+
+    if (solvedShadowTrials.has(COUNTDOWN_RITUAL_TRIAL_ID)) {
+        countdownRitualStep = 0;
+        updateCountdownRitualCards();
+        return;
+    }
+
+    if (countdownRitualStep === 1 && getCountdownUnitNumber('minutes') !== COUNTDOWN_RITUAL_MINUTES) {
+        resetCountdownRitual({
+            toast: 'O nono minuto passou. O ritual precisa recomecar.'
+        });
+        return;
+    }
+
+    updateCountdownRitualCards();
+}
+
+function handleCountdownRitualAttempt(unit) {
+    if (!countdownRitualReady) return;
+
+    if (solvedShadowTrials.has(COUNTDOWN_RITUAL_TRIAL_ID)) {
+        setShadowChaseMessage('O relogio ja entregou esse fragmento.');
+        return;
+    }
+
+    if (countdownRitualStep === 0) {
+        if (unit !== 'minutes') {
+            showShadowToast('O ritual comeca nos minutos.', 1800);
+            return;
+        }
+
+        if (getCountdownUnitNumber('minutes') !== COUNTDOWN_RITUAL_MINUTES) {
+            showShadowToast('Ainda nao e o nono minuto.', 1800);
+            return;
+        }
+
+        countdownRitualStep = 1;
+        updateCountdownRitualCards();
+        setShadowChaseMessage('O nono minuto respondeu. Agora toque o sexto segundo.', { persist: true });
+        return;
+    }
+
+    if (unit !== 'seconds') {
+        resetCountdownRitual({
+            toast: 'A ordem foi quebrada. O relogio se fechou.'
+        });
+        return;
+    }
+
+    if (getCountdownUnitNumber('seconds') !== COUNTDOWN_RITUAL_SECONDS) {
+        resetCountdownRitual({
+            toast: 'Ainda nao e o sexto segundo.'
+        });
+        return;
+    }
+
+    const unlocked = unlockShadowTrial(COUNTDOWN_RITUAL_TRIAL_ID, {
+        toast: `O tempo cedeu o fragmento ${shadowTrialMap.get(COUNTDOWN_RITUAL_TRIAL_ID).fragment}.`,
+        feedback: 'o ritual 09 > 06 abriu uma fissura',
+        modalText: 'O sexto segundo respondeu. Fragmento recuperado.'
+    });
+
+    countdownRitualStep = 0;
+    updateCountdownRitualCards();
+    if (!unlocked) {
+        setShadowChaseMessage('O relogio permanece em silencio.');
+    }
+}
+
+if (countdownCards.length) {
+    countdownCards.forEach((card) => {
+        const unit = card.dataset.countdownUnit;
+        card.addEventListener('click', () => handleCountdownRitualAttempt(unit));
+        card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleCountdownRitualAttempt(unit);
+            }
+        });
+    });
+    countdownRitualReady = true;
+    syncCountdownRitualState();
+}
+
+renderShadowArg();
+let startAbyssTagGame = () => {
+    setShadowChaseMessage('Abyss ainda esta se formando.');
+};
 
 // --- LOGICA DO TERMINAL E SEQUÊNCIA DE CAOS (ABYSS) ---
 const fakeTerminal = document.getElementById('fake-terminal');
@@ -120,6 +650,7 @@ const fakeTerminalOutput = document.getElementById('fake-terminal-output');
 const fakeTerminalClose = document.getElementById('fake-terminal-close');
 const chaosAudio = new Audio('https://www.myinstants.com/media/sounds/chicken-on-tree-screaming.mp3');
 let terminalInputBuffer = "";
+let terminalSequenceId = 0;
 
 const fakeTerminalLogs = [
     '[BOOT]: Inicializando modulo de vigilancia...',
@@ -129,45 +660,62 @@ const fakeTerminalLogs = [
     '[STATUS]: Nenhuma ameaca real detectada. Curta o site :)'
 ];
 
-const startChaosSequence = () => {
+const appendFakeTerminalLine = (line) => {
+    if (!fakeTerminalOutput) return;
+    console.log(`%c${line}`, 'color:#6bff6b;font-family:Consolas,monospace;font-weight:700;');
+    fakeTerminalOutput.textContent += line + "\n";
+    fakeTerminalOutput.scrollTop = fakeTerminalOutput.scrollHeight;
+};
+
+const resetChaosSequence = () => {
+    document.body.classList.remove('screen-shake');
+    document.documentElement.style.transition = '';
+    document.documentElement.style.filter = '';
+    document.documentElement.style.transform = '';
+    document.documentElement.style.background = '';
+    document.body.style.opacity = '';
+};
+
+const startChaosSequence = (sequenceId) => {
     document.body.classList.add('screen-shake');
-    document.documentElement.style.transition = "filter 0.2s, transform 5s linear";
-    
+    document.documentElement.style.transition = "filter 0.18s linear, transform 0.18s linear";
+
     const chaosInterval = setInterval(() => {
         const randomHue = Math.floor(Math.random() * 360);
-        document.documentElement.style.filter = `hue-rotate(${randomHue}deg) brightness(1.5) contrast(2)`;
-        document.documentElement.style.transform = `rotate(${Math.random() * 360}deg) scale(${1 + Math.random()})`;
+        document.documentElement.style.filter = `hue-rotate(${randomHue}deg) brightness(1.45) contrast(1.85)`;
+        document.documentElement.style.transform = `rotate(${(Math.random() - 0.5) * 7}deg) scale(${1 + Math.random() * 0.08})`;
     }, 100);
 
+    chaosAudio.currentTime = 0;
     chaosAudio.play().catch(() => {});
-
-    chaosAudio.onended = () => {
+    setTimeout(() => {
+        if (sequenceId !== terminalSequenceId) return;
         clearInterval(chaosInterval);
-        document.documentElement.style.transition = "all 0.5s cubic-bezier(0.15, 0.85, 0.15, 1)";
-        document.documentElement.style.transform = "scaleX(0.001) scaleY(0.001)";
-        document.documentElement.style.background = "white";
-        document.body.style.opacity = "0";
-
-        setTimeout(() => {
-            window.open('', '_self');
-            window.close();
-            document.body.innerHTML = '';
-            location.href = 'about:blank';
-        }, 600);
-    };
+        chaosAudio.pause();
+        resetChaosSequence();
+        const unlocked = unlockShadowTrial('terminal', {
+            toast: `O terminal cuspiu o fragmento ${shadowTrialMap.get('terminal').fragment}.`,
+            feedback: 'o terminal abriu uma fenda no codigo',
+            modalText: 'Terminal estabilizado. Fragmento recuperado.'
+        });
+        appendFakeTerminalLine(unlocked
+            ? `[ABYSS]: Fragmento ${shadowTrialMap.get('terminal').fragment} armazenado.`
+            : '[ABYSS]: Terminal ja drenado. Nenhum novo fragmento detectado.'
+        );
+    }, 1500);
 };
 
 const runFakeTerminalLogs = () => {
     if (!fakeTerminalOutput) return;
+    const sequenceId = ++terminalSequenceId;
     fakeTerminalOutput.textContent = "";
-    
+
     fakeTerminalLogs.forEach((line, index) => {
         setTimeout(() => {
-            console.log(`%c${line}`, 'color:#6bff6b;font-family:Consolas,monospace;font-weight:700;');
-            fakeTerminalOutput.textContent += line + "\n";
-            fakeTerminalOutput.scrollTop = fakeTerminalOutput.scrollHeight;
+            if (sequenceId !== terminalSequenceId) return;
+            appendFakeTerminalLine(line);
             if (index === fakeTerminalLogs.length - 1) {
-                setTimeout(startChaosSequence, 500);
+                setTimeout(() => startChaosSequence(sequenceId), 500);
             }
         }, 420 * index);
     });
@@ -223,6 +771,9 @@ document.addEventListener('keydown', (e) => {
 
 if (fakeTerminalClose) {
     fakeTerminalClose.addEventListener('click', () => {
+        terminalSequenceId += 1;
+        chaosAudio.pause();
+        resetChaosSequence();
         fakeTerminal.classList.remove('is-open');
         fakeTerminal.setAttribute('aria-hidden', 'true');
     });
@@ -315,6 +866,10 @@ const closeVideoModal = () => {
     document.body.style.overflow = '';
 };
 
+const openDiscordInvite = () => {
+    window.open(DISCORD_INVITE_URL, '_blank', 'noopener,noreferrer');
+};
+
 const openSecretChoiceModal = () => {
     if (!secretChoiceModal) return;
     secretChoiceModal.classList.add('is-open');
@@ -352,41 +907,77 @@ const setSecretFeedback = (text) => {
     secretCodeFeedback.classList.add('is-visible');
 };
 
+const setInviteFeedback = (text) => {
+    if (!inviteCodeFeedback) return;
+    inviteCodeFeedback.textContent = text;
+    inviteCodeFeedback.classList.add('is-visible');
+};
+
+const handleInviteCodeSubmit = () => {
+    if (!inviteCodeInput) return;
+    const rawValue = inviteCodeInput.value || '';
+    const normalizedInvite = normalizeInviteCandidate(rawValue);
+    if (!normalizedInvite) return;
+
+    if (normalizedInvite.toLowerCase() !== DISCORD_INVITE_CODE.toLowerCase()) {
+        setInviteFeedback('a montagem ainda esta incorreta');
+        showShadowToast('Os fragmentos nao se encaixaram ainda.');
+        return;
+    }
+
+    if (solvedShadowTrials.size < shadowTrials.length) {
+        setInviteFeedback('faltam fragmentos nas sombras');
+        showShadowToast('Ainda faltam fragmentos antes da porta abrir.');
+        return;
+    }
+
+    setInviteFeedback('convite montado. fenda aberta.');
+    showShadowToast('Convite montado. A fenda para o Discord foi aberta.');
+    openDiscordInvite();
+};
+
 const hasUnlockedAllSecretCodes = () => allSecretCodes.every((code) => secretCodesTriggered.has(code));
 
 // --- GESTÃO DE CÓDIGOS DE INPUT (TOMATE, SOA, AQUARIOS, CROTA) ---
 const handleSecretCodeSubmit = () => {
     if (!secretCodeInput) return;
     const rawCode = secretCodeInput.value || '';
-    const code = rawCode.trim().toLowerCase();
-    if (!code) return;
+    const trimmed = rawCode.trim();
+    const code = trimmed.toLowerCase();
+    if (!trimmed) return;
 
-    if (hasUnlockedAllSecretCodes()) {
-        setSecretFeedback('quase la um pouco mais');
-        openSecretMimimModal();
+    if (normalizeInviteCandidate(trimmed).toLowerCase() === DISCORD_INVITE_CODE.toLowerCase()) {
+        setSecretFeedback('esse codigo vai na caixa dos fragmentos');
+        showShadowToast('Use a montagem lateral para o convite.');
         secretCodeInput.value = '';
         return;
     }
 
     if (code === 'aquarios' || code === 'quarios') {
-        secretCodesTriggered.add('aquarios');
-        setSecretFeedback('achou que ia ter farpas né');
+        unlockShadowTrial('aquarios', {
+            toast: `Fragmento ${shadowTrialMap.get('aquarios').fragment} arrancado do eco aquatico.`,
+            feedback: 'achou que ia ter farpas ne'
+        });
         openVideo('https://www.youtube-nocookie.com/embed/8hRmsQ-WjNc?autoplay=1&rel=0&modestbranding=1', 'achou que ia ter farpas né');
         secretCodeInput.value = '';
         return;
     }
 
     if (code === 'tomate') {
-        secretCodesTriggered.add('tomate');
-        setSecretFeedback('tomate detectado');
+        unlockShadowTrial('tomate', {
+            toast: `Fragmento ${shadowTrialMap.get('tomate').fragment} amadureceu nas sombras.`,
+            feedback: 'tomate detectado'
+        });
         openSecretChoiceModal();
         secretCodeInput.value = '';
         return;
     }
 
     if (code === 'soa') {
-        secretCodesTriggered.add('soa');
-        setSecretFeedback('Membros do SOA até o dia 09/06');
+        unlockShadowTrial('soa', {
+            toast: `Fragmento ${shadowTrialMap.get('soa').fragment} jurado ao SOA.`,
+            feedback: 'Membros do SOA ate o dia 09/06'
+        });
         openVideo('https://www.youtube.com/embed/tulP1Mc3-NU?autoplay=1', 'Membros do SOA até o dia 09/06');
         secretCodeInput.value = '';
         return;
@@ -394,21 +985,33 @@ const handleSecretCodeSubmit = () => {
 
     // INTEGRAÇÃO CROTA
     if (code === 'crota') {
-        secretCodesTriggered.add('crota');
-        setSecretFeedback('Hey, you. You\'re finally awake.');
+        unlockShadowTrial('crota', {
+            toast: `Fragmento ${shadowTrialMap.get('crota').fragment} despertou com o prisioneiro.`,
+            feedback: 'Hey, you. You\'re finally awake.'
+        });
         triggerSkyrimEasterEgg();
         secretCodeInput.value = '';
         return;
     }
 
-    setSecretFeedback('Quase... faltou o sacrifício');
+    if (hasUnlockedAllSecretCodes()) {
+        setSecretFeedback('os codigos acabaram. o resto vive fora da caixa.');
+    } else {
+        setSecretFeedback('Quase... faltou o sacrificio');
+    }
     openSecretMimimModal();
     secretCodeInput.value = '';
 };
 
 if (secretChoiceYes) {
     secretChoiceYes.addEventListener('click', () => {
-        window.open('https://discord.gg/ywXG6EC27Z', '_blank', 'noopener,noreferrer');
+        if (solvedShadowTrials.size >= shadowTrials.length) {
+            openDiscordInvite();
+            setSecretFeedback('as sombras aceitaram sua entrada.');
+        } else {
+            setSecretFeedback('a porta ainda esta quebrada. faltam fragmentos.');
+            showShadowToast('A porta final ainda esta incompleta.');
+        }
         closeSecretChoiceModal();
     });
 }
@@ -432,6 +1035,18 @@ if (secretCodeInput) {
     });
 }
 
+if (inviteCodeSubmit) {
+    inviteCodeSubmit.addEventListener('click', handleInviteCodeSubmit);
+}
+
+if (inviteCodeInput) {
+    inviteCodeInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        handleInviteCodeSubmit();
+    });
+}
+
 document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     if (secretChoiceModal && secretChoiceModal.classList.contains('is-open')) {
@@ -451,8 +1066,54 @@ if (launchLink) {
 }
 
 if (abyssTrigger) {
-    abyssTrigger.addEventListener('click', () => {
-        openVideo('https://www.youtube.com/embed/KnHmoA6Op1o?autoplay=1', 'O segredo da bungie.');
+    let abyssClickTimer = null;
+    let abyssArmTimer = null;
+    const ABYSS_DOUBLE_CLICK_WINDOW_MS = 240;
+    const clearAbyssTextSelection = () => {
+        const selection = window.getSelection ? window.getSelection() : null;
+        if (selection && typeof selection.removeAllRanges === 'function') {
+            selection.removeAllRanges();
+        }
+    };
+    const clearAbyssTriggerState = () => {
+        abyssTrigger.classList.remove('is-arming', 'is-awakening');
+    };
+    const armAbyssTrigger = () => {
+        if (abyssArmTimer) clearTimeout(abyssArmTimer);
+        abyssTrigger.classList.remove('is-awakening');
+        void abyssTrigger.offsetWidth;
+        abyssTrigger.classList.add('is-arming');
+        abyssArmTimer = setTimeout(() => {
+            abyssTrigger.classList.remove('is-arming');
+        }, 260);
+    };
+    const awakenAbyssTrigger = () => {
+        if (abyssArmTimer) clearTimeout(abyssArmTimer);
+        abyssTrigger.classList.remove('is-arming');
+        void abyssTrigger.offsetWidth;
+        abyssTrigger.classList.add('is-awakening');
+        abyssArmTimer = setTimeout(clearAbyssTriggerState, 540);
+    };
+
+    abyssTrigger.addEventListener('click', (event) => {
+        if (event.detail > 1) return;
+        clearAbyssTextSelection();
+        armAbyssTrigger();
+        if (abyssClickTimer) clearTimeout(abyssClickTimer);
+        abyssClickTimer = setTimeout(() => {
+            clearAbyssTriggerState();
+            openVideo('https://www.youtube.com/embed/KnHmoA6Op1o?autoplay=1', 'O segredo da bungie.');
+        }, ABYSS_DOUBLE_CLICK_WINDOW_MS);
+    });
+    abyssTrigger.addEventListener('mousedown', (event) => {
+        if (event.detail > 1) event.preventDefault();
+    });
+    abyssTrigger.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        clearAbyssTextSelection();
+        if (abyssClickTimer) clearTimeout(abyssClickTimer);
+        awakenAbyssTrigger();
+        startAbyssTagGame();
     });
 }
 
@@ -511,12 +1172,21 @@ if (shadowsATrigger && warningModal) {
 if (copyrightTrigger && parchmentModal) {
     const parchmentSound = new Audio('https://actions.google.com/sounds/v1/foley/paper_rustle.ogg');
     const parchmentCloseButton = parchmentModal.querySelector('.parchment-close');
+    const parchmentScroll = parchmentModal.querySelector('.parchment-scroll');
     const parchmentTyping = parchmentModal.querySelector('.parchment-typing');
+    const parchmentSecret = parchmentModal.querySelector('#parchment-secret');
+    const parchmentHoldFill = parchmentModal.querySelector('#parchment-hold-fill');
+    const parchmentHoldHint = parchmentModal.querySelector('#parchment-hold-hint');
     const parchmentMessage = '100% oliginal';
     const PARCHMENT_TYPE_DELAY_MS = 170;
     const PARCHMENT_TYPE_START_DELAY_MS = 980;
+    const PARCHMENT_HOLD_MS = 3000;
     let parchmentTypeInterval = null;
     let parchmentTypeStartTimeout = null;
+    let parchmentHoldTimeout = null;
+    let parchmentHoldFrame = null;
+    let parchmentHoldActive = false;
+    let parchmentHoldStartAt = 0;
     parchmentSound.preload = 'auto';
     parchmentSound.volume = 0.95;
 
@@ -555,6 +1225,64 @@ if (copyrightTrigger && parchmentModal) {
         }, PARCHMENT_TYPE_START_DELAY_MS);
     };
 
+    const resetParchmentHoldState = ({ keepReveal = false } = {}) => {
+        if (parchmentHoldTimeout) {
+            clearTimeout(parchmentHoldTimeout);
+            parchmentHoldTimeout = null;
+        }
+        if (parchmentHoldFrame) {
+            cancelAnimationFrame(parchmentHoldFrame);
+            parchmentHoldFrame = null;
+        }
+        parchmentHoldActive = false;
+        if (parchmentScroll) parchmentScroll.classList.remove('is-holding');
+        if (!keepReveal && parchmentScroll) parchmentScroll.classList.remove('is-secret-revealed');
+        if (parchmentSecret) parchmentSecret.setAttribute('aria-hidden', keepReveal ? 'false' : 'true');
+        if (parchmentHoldFill) parchmentHoldFill.style.transform = keepReveal ? 'scaleX(1)' : 'scaleX(0)';
+    };
+
+    const tickParchmentHold = () => {
+        if (!parchmentHoldActive || !parchmentHoldFill) return;
+        const progress = Math.min(1, (performance.now() - parchmentHoldStartAt) / PARCHMENT_HOLD_MS);
+        parchmentHoldFill.style.transform = `scaleX(${progress})`;
+        if (progress < 1) {
+            parchmentHoldFrame = requestAnimationFrame(tickParchmentHold);
+        }
+    };
+
+    const revealParchmentSecret = () => {
+        parchmentHoldActive = false;
+        if (parchmentScroll) {
+            parchmentScroll.classList.remove('is-holding');
+            parchmentScroll.classList.add('is-secret-revealed');
+        }
+        if (parchmentSecret) parchmentSecret.setAttribute('aria-hidden', 'false');
+        if (parchmentHoldFill) parchmentHoldFill.style.transform = 'scaleX(1)';
+        if (parchmentHoldHint) parchmentHoldHint.textContent = '';
+        setShadowChaseMessage('');
+        resetParchmentHoldState({ keepReveal: true });
+    };
+
+    const startParchmentHold = (event) => {
+        if (!parchmentScroll || !parchmentModal.classList.contains('is-open')) return;
+        if (event.target instanceof Element && event.target.closest('.parchment-close')) return;
+        if (parchmentScroll.classList.contains('is-secret-revealed')) return;
+
+        resetParchmentHoldState();
+        parchmentHoldActive = true;
+        parchmentHoldStartAt = performance.now();
+        parchmentScroll.classList.add('is-holding');
+        if (parchmentHoldHint) parchmentHoldHint.textContent = 'segure... a tinta esta cedendo';
+        parchmentHoldTimeout = setTimeout(revealParchmentSecret, PARCHMENT_HOLD_MS);
+        tickParchmentHold();
+    };
+
+    const stopParchmentHold = () => {
+        if (!parchmentHoldActive) return;
+        resetParchmentHoldState();
+        if (parchmentHoldHint) parchmentHoldHint.textContent = 'segure o pergaminho por 3 segundos';
+    };
+
     const openParchmentModal = () => {
         const triggerRect = copyrightTrigger.getBoundingClientRect();
         const startX = triggerRect.left + (triggerRect.width / 2);
@@ -573,6 +1301,8 @@ if (copyrightTrigger && parchmentModal) {
         parchmentModal.classList.add('is-open');
         parchmentModal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        resetParchmentHoldState();
+        if (parchmentHoldHint) parchmentHoldHint.textContent = 'segure o pergaminho por 3 segundos';
         parchmentSound.currentTime = 0;
         parchmentSound.play().catch(() => {});
         startTypingEffect();
@@ -584,6 +1314,8 @@ if (copyrightTrigger && parchmentModal) {
         document.body.style.overflow = '';
         parchmentSound.pause();
         stopTypingEffect();
+        resetParchmentHoldState();
+        if (parchmentHoldHint) parchmentHoldHint.textContent = 'segure o pergaminho por 3 segundos';
         if (parchmentTyping) parchmentTyping.textContent = parchmentMessage;
     };
 
@@ -595,9 +1327,16 @@ if (copyrightTrigger && parchmentModal) {
         }
     });
     closeParchmentControls.forEach(el => el.addEventListener('click', closeParchmentModal));
+    if (parchmentScroll) {
+        parchmentScroll.addEventListener('pointerdown', startParchmentHold);
+        parchmentScroll.addEventListener('pointerup', stopParchmentHold);
+        parchmentScroll.addEventListener('pointerleave', stopParchmentHold);
+        parchmentScroll.addEventListener('pointercancel', stopParchmentHold);
+    }
     if (parchmentCloseButton) {
         parchmentCloseButton.addEventListener('click', closeParchmentModal);
     }
+    document.addEventListener('pointerup', stopParchmentHold);
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && parchmentModal.classList.contains('is-open')) {
             closeParchmentModal();
@@ -1407,6 +2146,18 @@ if (chessTrigger && chessModal) {
                     selectSquare(to);
                     return false;
                 }
+                if (source === 'local' && !solvedShadowTrials.has('chess3')) {
+                    chessTrialMoveProgress = Math.min(chessTrialMoveProgress + 1, 3);
+                    saveShadowState();
+                    if (chessTrialMoveProgress >= 3) {
+                        unlockShadowTrial('chess3', {
+                            toast: `O tabuleiro cedeu o fragmento ${shadowTrialMap.get('chess3').fragment}.`,
+                            feedback: 'o xadrez observou suas tres jogadas'
+                        });
+                    } else {
+                        showShadowToast(`Tabuleiro das sombras ${chessTrialMoveProgress}/3.`);
+                    }
+                }
                 clearSelection();
                 if (mode === 'online' && source !== 'remote') {
                     sendOnlineMessage({
@@ -1619,7 +2370,7 @@ if (chessTrigger && chessModal) {
 if (badgeRunawayButton && badgeButtonZone) {
     const containerEl = document.querySelector('.container');
     const BUTTON_PADDING = 8;
-    const START_BOTTOM_OFFSET = 14;
+    const START_BOTTOM_OFFSET = 10;
     const ESCAPE_DISTANCE = 130;
     const DETECTION_RADIUS = 180;
     const INITIAL_FREEZE_MS = 250;
@@ -1767,6 +2518,10 @@ if (badgeRunawayButton && badgeButtonZone) {
     setTimeout(() => { canRunAway = true; }, INITIAL_FREEZE_MS);
 
     badgeRunawayButton.addEventListener('click', () => {
+        unlockShadowTrial('badge', {
+            toast: `O emblema deixou cair o fragmento ${shadowTrialMap.get('badge').fragment}.`,
+            feedback: 'o emblema finalmente cedeu'
+        });
         openVideo('https://www.youtube.com/embed/u-fOF9Wlpd8?autoplay=1', 'Parabéns, você resgatou um emblema!', 'Parabéns');
     });
 }
@@ -1777,22 +2532,73 @@ if (dvdGif) {
     let dy = Math.max(0, window.innerHeight * 0.1);
     let vx = 1.9;
     let vy = 1.45;
+    let dvdClickCount = 0;
+    const DVD_TARGET_CLICKS = 5;
+
+    if (solvedShadowTrials.has('dvd')) {
+        dvdGif.classList.add('is-unlocked');
+    }
+
+    const isPointerInsideDvd = (clientX, clientY) => {
+        const rect = dvdGif.getBoundingClientRect();
+        return (
+            clientX >= rect.left &&
+            clientX <= rect.right &&
+            clientY >= rect.top &&
+            clientY <= rect.bottom
+        );
+    };
+
+    const handleDvdInteraction = () => {
+        if (solvedShadowTrials.has('dvd')) {
+            showShadowToast('O eco VHS ja foi quebrado.');
+            return;
+        }
+
+        dvdClickCount += 1;
+        dvdGif.classList.add('is-awake');
+        setTimeout(() => dvdGif.classList.remove('is-awake'), 260);
+
+        if (dvdClickCount >= DVD_TARGET_CLICKS) {
+            const unlocked = unlockShadowTrial('dvd', {
+                toast: `O DVD rachou e soltou o fragmento ${shadowTrialMap.get('dvd').fragment}.`,
+                feedback: 'o espectro rebateu ate quebrar'
+            });
+            if (unlocked) dvdGif.classList.add('is-unlocked');
+            return;
+        }
+
+        setSecretFeedback(`eco VHS detectado: ${dvdClickCount}/${DVD_TARGET_CLICKS}`);
+        showShadowToast(`Eco VHS ${dvdClickCount}/${DVD_TARGET_CLICKS}`);
+    };
 
     const animateBackgroundGif = () => {
-        const maxX = Math.max(0, window.innerWidth - dvdGif.offsetWidth);
-        const maxY = Math.max(0, window.innerHeight - dvdGif.offsetHeight);
+        const gifWidth = dvdGif.offsetWidth;
+        const gifHeight = dvdGif.offsetHeight;
+        const maxX = Math.max(0, window.innerWidth - gifWidth);
+        const maxY = Math.max(0, window.innerHeight - gifHeight);
         dx += vx;
         dy += vy;
-        if (dx <= 0 || dx >= maxX) vx *= -1;
-        if (dy <= 0 || dy >= maxY) vy *= -1;
-        dx = Math.max(0, Math.min(dx, maxX));
-        dy = Math.max(0, Math.min(dy, maxY));
+
+        if (dx <= 0 || dx >= maxX) {
+            vx *= -1;
+            dx = Math.max(0, Math.min(dx, maxX));
+        }
+
+        if (dy <= 0 || dy >= maxY) {
+            vy *= -1;
+            dy = Math.max(0, Math.min(dy, maxY));
+        }
         dvdGif.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
         requestAnimationFrame(animateBackgroundGif);
     };
 
     const startBackgroundGif = () => requestAnimationFrame(animateBackgroundGif);
     dvdGif.complete ? startBackgroundGif() : dvdGif.addEventListener('load', startBackgroundGif, { once: true });
+    document.addEventListener('pointerdown', (event) => {
+        if (!isPointerInsideDvd(event.clientX, event.clientY)) return;
+        handleDvdInteraction();
+    });
 }
 
 const hunterGifSrc = 'assets/gifzin.gif';
@@ -1814,29 +2620,33 @@ cursorHunterGif.addEventListener('error', () => {
 });
 
 {
-    const CAPTURE_RADIUS = 34;
-    const CHASE_ACCEL = 0.1;
-    const MAX_SPEED = 5.8;
+    const CAPTURE_RADIUS = 42;
+    const IDLE_ACCEL = 0.038;
+    const IDLE_MAX_SPEED = 2.35;
+    const TAG_ACCEL = 0.16;
+    const TAG_MAX_SPEED = 6.4;
     const FRICTION = 0.986;
-    const CAPTURE_DURATION_MS = 760;
-    const CAPTURE_COOLDOWN_MS = 850;
-    const DRAG_OFFSET_X = 26;
-    const DRAG_OFFSET_Y = -24;
+    const ABYSS_TAG_DURATION_MS = 12000;
+    const ABYSS_TAG_COOLDOWN_MS = 1400;
+    const FOLLOW_OFFSET_X = 124;
+    const FOLLOW_OFFSET_Y = 74;
     const HUNTER_GIF_FACES_RIGHT_NATIVELY = true;
 
     let x = Math.max(0, window.innerWidth * 0.7);
     let y = Math.max(0, window.innerHeight * 0.2);
-    let vx = -2.4;
-    let vy = 1.7;
+    let vx = -1.2;
+    let vy = 0.9;
     let pointerX = window.innerWidth / 2;
     let pointerY = window.innerHeight / 2;
     let pointerKnown = false;
     let pointerLastSeen = 0;
-    let captureUntil = 0;
-    let captureCooldownUntil = 0;
     let hunterStarted = false;
     let facingScaleX = 1;
     let visualTiltDeg = 0;
+    let abyssTagActive = false;
+    let abyssTagEndsAt = 0;
+    let abyssTagCooldownUntil = 0;
+    let abyssTagLastSecond = null;
 
     const mapRoute = [
         [0.12, 0.12], [0.5, 0.08], [0.86, 0.16], [0.9, 0.5],
@@ -1871,60 +2681,107 @@ cursorHunterGif.addEventListener('error', () => {
             `translate3d(${x}px, ${y}px, 0) scaleX(${facingScaleX}) rotate(${visualTiltDeg}deg)`;
     };
 
+    const finishAbyssTagGame = () => {
+        if (!abyssTagActive) return;
+        abyssTagActive = false;
+        abyssTagLastSecond = null;
+        cursorHunterGif.classList.remove('is-tag-mode', 'is-catching');
+        unlockShadowTrial('tag', {
+            toast: `Voce escapou do Abyss. Fragmento ${shadowTrialMap.get('tag').fragment} recuperado.`,
+            feedback: 'voce venceu a caca do Abyss'
+        });
+        setShadowChaseMessage('Abyss perdeu o rastro. Fragmento recuperado.');
+    };
+
+    const failAbyssTagGame = () => {
+        abyssTagActive = false;
+        abyssTagLastSecond = null;
+        abyssTagCooldownUntil = performance.now() + ABYSS_TAG_COOLDOWN_MS;
+        cursorHunterGif.classList.remove('is-tag-mode');
+        cursorHunterGif.classList.add('is-catching');
+        setTimeout(() => cursorHunterGif.classList.remove('is-catching'), 420);
+        showShadowToast('Abyss te marcou. Tente de novo.');
+        setSecretFeedback('Abyss venceu essa rodada');
+        setShadowChaseMessage('Abyss te marcou. Provoque-o de novo.', { persist: false });
+    };
+
+    startAbyssTagGame = () => {
+        const now = performance.now();
+        if (abyssTagActive) {
+            setShadowChaseMessage('Abyss ja esta correndo atras de voce.', { persist: true });
+            return;
+        }
+        if (now < abyssTagCooldownUntil) {
+            setShadowChaseMessage('Abyss ainda esta rindo. Espere um instante.');
+            return;
+        }
+
+        abyssTagActive = true;
+        abyssTagEndsAt = now + ABYSS_TAG_DURATION_MS;
+        abyssTagLastSecond = null;
+        cursorHunterGif.classList.add('is-tag-mode');
+        showShadowToast('Abyss acordou. Nao deixe ele tocar em voce.');
+        setSecretFeedback('Abyss aceitou brincar');
+        setShadowChaseMessage(`Tag do Abyss: sobreviva por ${Math.ceil(ABYSS_TAG_DURATION_MS / 1000)}s.`, {
+            persist: true
+        });
+    };
+
     const animateHunter = (timestamp) => {
         const halfW = cursorHunterGif.offsetWidth / 2;
         const halfH = cursorHunterGif.offsetHeight / 2;
         const centerX = x + halfW;
         const centerY = y + halfH;
-        const isCapturing = timestamp < captureUntil;
 
-        if (isCapturing) {
-            x += ((pointerX + DRAG_OFFSET_X) - x) * 0.34;
-            y += ((pointerY + DRAG_OFFSET_Y) - y) * 0.34;
-            cursorHunterGif.classList.add('is-catching');
-            visualTiltDeg = 0;
-        } else {
-            cursorHunterGif.classList.remove('is-catching');
-            const shouldPatrolMap = !pointerKnown || (timestamp - pointerLastSeen > 2200);
-            let targetX;
-            let targetY;
-
-            if (shouldPatrolMap) {
-                const point = mapRoute[mapIndex];
-                targetX = point[0] * window.innerWidth;
-                targetY = point[1] * window.innerHeight;
-                if (Math.hypot(targetX - centerX, targetY - centerY) < 50) {
-                    mapIndex = (mapIndex + 1) % mapRoute.length;
-                }
-            } else {
-                targetX = pointerX;
-                targetY = pointerY;
-            }
-
-            const deltaX = targetX - centerX;
-            const deltaY = targetY - centerY;
-            const dist = Math.hypot(deltaX, targetX) || 1;
-            vx += (deltaX / dist) * CHASE_ACCEL;
-            vy += (deltaY / dist) * CHASE_ACCEL;
-            vx *= FRICTION;
-            vy *= FRICTION;
-
-            const speed = Math.hypot(vx, vy);
-            if (speed > MAX_SPEED) {
-                const factor = MAX_SPEED / speed;
-                vx *= factor;
-                vy *= factor;
-            }
-
-            if (Math.abs(vx) > 0.08) {
-                const movementSign = vx >= 0 ? 1 : -1;
-                facingScaleX = HUNTER_GIF_FACES_RIGHT_NATIVELY ? movementSign : -movementSign;
-            }
-            visualTiltDeg = Math.max(-9, Math.min(9, vy * 1.8));
-
-            x += vx;
-            y += vy;
+        if (abyssTagActive && timestamp >= abyssTagEndsAt) {
+            finishAbyssTagGame();
         }
+
+        const shouldPatrolMap = !pointerKnown || (timestamp - pointerLastSeen > 2200);
+        let targetX;
+        let targetY;
+
+        if (shouldPatrolMap) {
+            const point = mapRoute[mapIndex];
+            targetX = point[0] * window.innerWidth;
+            targetY = point[1] * window.innerHeight;
+            if (Math.hypot(targetX - centerX, targetY - centerY) < 50) {
+                mapIndex = (mapIndex + 1) % mapRoute.length;
+            }
+        } else if (abyssTagActive) {
+            targetX = pointerX;
+            targetY = pointerY;
+        } else {
+            const followSide = pointerX >= centerX ? -1 : 1;
+            targetX = pointerX + (followSide * FOLLOW_OFFSET_X);
+            targetY = pointerY + FOLLOW_OFFSET_Y;
+        }
+
+        const deltaX = targetX - centerX;
+        const deltaY = targetY - centerY;
+        const dist = Math.hypot(deltaX, deltaY) || 1;
+        const activeAccel = abyssTagActive ? TAG_ACCEL : IDLE_ACCEL;
+        const activeMaxSpeed = abyssTagActive ? TAG_MAX_SPEED : IDLE_MAX_SPEED;
+        vx += (deltaX / dist) * activeAccel;
+        vy += (deltaY / dist) * activeAccel;
+        vx *= FRICTION;
+        vy *= FRICTION;
+
+        const speed = Math.hypot(vx, vy);
+        if (speed > activeMaxSpeed) {
+            const factor = activeMaxSpeed / speed;
+            vx *= factor;
+            vy *= factor;
+        }
+
+        if (Math.abs(vx) > 0.08) {
+            const movementSign = vx >= 0 ? 1 : -1;
+            facingScaleX = HUNTER_GIF_FACES_RIGHT_NATIVELY ? movementSign : -movementSign;
+        }
+        visualTiltDeg = Math.max(-9, Math.min(9, vy * 1.8));
+
+        x += vx;
+        y += vy;
 
         const maxX = Math.max(0, window.innerWidth - cursorHunterGif.offsetWidth);
         const maxY = Math.max(0, window.innerHeight - cursorHunterGif.offsetHeight);
@@ -1932,14 +2789,23 @@ cursorHunterGif.addEventListener('error', () => {
         if (y <= 0 || y >= maxY) vy *= -0.9;
         keepInside();
 
-        if (!isCapturing && pointerKnown && timestamp >= captureCooldownUntil) {
+        if (pointerKnown) {
             const distanceToPointer = Math.hypot(pointerX - (x + halfW), pointerY - (y + halfH));
-            if (distanceToPointer <= CAPTURE_RADIUS) {
-                captureUntil = timestamp + CAPTURE_DURATION_MS;
-                captureCooldownUntil = timestamp + CAPTURE_DURATION_MS + CAPTURE_COOLDOWN_MS;
-                vx = 0;
-                vy = 0;
+            cursorHunterGif.classList.toggle('is-catching', abyssTagActive && distanceToPointer <= CAPTURE_RADIUS * 1.6);
+
+            if (abyssTagActive) {
+                const secondsLeft = Math.max(0, Math.ceil((abyssTagEndsAt - timestamp) / 1000));
+                if (secondsLeft !== abyssTagLastSecond) {
+                    abyssTagLastSecond = secondsLeft;
+                    setShadowChaseMessage(`Tag do Abyss: sobreviva por ${secondsLeft}s.`, { persist: true });
+                }
             }
+
+            if (abyssTagActive && distanceToPointer <= CAPTURE_RADIUS) {
+                failAbyssTagGame();
+            }
+        } else {
+            cursorHunterGif.classList.remove('is-catching');
         }
 
         applyHunterTransform();
@@ -1983,7 +2849,7 @@ document.addEventListener('keydown', event => {
 const randomPhotoLayer = document.getElementById('random-photo-layer');
 const randomPhoto = document.getElementById('random-photo');
 const scareAudio = new Audio('https://www.myinstants.com/media/sounds/xenoverse-goku-noise.mp3');
-const fixedPhotoUrl = 'assets/foto-aleatoria.png';
+const fixedPhotoUrl = 'assets/LOGO%20SOA2.png';
 const fallbackPhotoDataUrl = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='450' viewBox='0 0 800 450'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23110f1a'/%3E%3Cstop offset='1' stop-color='%23312942'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='450' fill='url(%23bg)'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23f5f2ff' font-size='40' font-family='Arial,sans-serif'%3Efoto indisponivel%3C/text%3E%3C/svg%3E";
 
 let scareCycles = 0;

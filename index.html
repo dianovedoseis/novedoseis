@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SHADOWS OF THE ABYSS</title>
-    <link rel="icon" type="image/png" href="assets/soa%20logo.png">
+    <link rel="icon" type="image/png" href="assets/logo_nova_foda.png">
     <link rel="stylesheet" href="style.css">
     <style>
         .abyss-progress {
@@ -12,53 +12,276 @@
             top: 0;
             left: 0;
             width: 100%;
-            padding: 10px 20px;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            border-bottom: 1px solid rgba(255, 59, 31, 0.3);
+            padding: 8px 0 0;
+            z-index: 8;
+            pointer-events: none;
+            opacity: 0.9;
+        }
+        .abyss-progress-frame {
+            position: relative;
+            width: 100vw;
+            margin: 0 auto;
+            padding: 10px 10px 11px 42px;
+            overflow: hidden;
+            clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+            background:
+                linear-gradient(180deg, rgba(11, 10, 15, 0.9), rgba(5, 5, 7, 0.84)),
+                linear-gradient(90deg, rgba(105, 81, 143, 0.06), transparent 40%, rgba(105, 81, 143, 0.04));
+            border: 1px solid rgba(157, 139, 193, 0.1);
+            box-shadow:
+                0 16px 34px rgba(0, 0, 0, 0.38),
+                inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                inset 0 -16px 22px rgba(0, 0, 0, 0.28);
+            backdrop-filter: blur(18px);
+        }
+        .abyss-progress-frame::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.02)),
+                linear-gradient(90deg, rgba(105, 81, 143, 0.06), transparent 18%, transparent 82%, rgba(105, 81, 143, 0.05));
+            opacity: 0.54;
+        }
+        .abyss-progress-frame::after {
+            content: "";
+            position: absolute;
+            inset: -70% -12% -54%;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 8% 54%, rgba(0, 0, 0, 0.72) 0 10%, transparent 30%),
+                radial-gradient(circle at 34% 20%, rgba(13, 10, 21, 0.78) 0 11%, transparent 28%),
+                radial-gradient(circle at 68% 48%, rgba(0, 0, 0, 0.68) 0 12%, transparent 30%),
+                radial-gradient(circle at 94% 18%, rgba(18, 14, 28, 0.8) 0 10%, transparent 26%);
+            opacity: 0.58;
+            filter: blur(24px);
+            animation: abyss-progress-smoke 18s linear infinite;
+        }
+        .abyss-progress-sigil {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translateY(-50%) rotate(45deg);
+            border: 1px solid rgba(171, 156, 205, 0.22);
+            background:
+                radial-gradient(circle at 50% 50%, rgba(120, 94, 164, 0.34), rgba(15, 12, 20, 0.2) 62%, transparent 72%);
+            box-shadow:
+                0 0 16px rgba(105, 81, 143, 0.22),
+                inset 0 0 14px rgba(255, 255, 255, 0.04);
+        }
+        .abyss-progress-sigil::before,
+        .abyss-progress-sigil::after {
+            content: "";
+            position: absolute;
+            inset: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+        .abyss-progress-sigil::before {
+            width: 10px;
+            height: 2px;
+            border-radius: 999px;
+            background: rgba(196, 185, 221, 0.88);
+            box-shadow: 0 0 10px rgba(171, 156, 205, 0.34);
+        }
+        .abyss-progress-sigil::after {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(20, 16, 28, 0.96);
+            border: 1px solid rgba(196, 185, 221, 0.42);
+        }
+        .abyss-progress-head {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 6px;
+            min-height: 10px;
+        }
+        .abyss-progress-kicker,
+        .abyss-progress-status {
+            margin: 0;
+            font-family: var(--font-ui);
+            font-size: 8px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+        }
+        .abyss-progress-kicker {
+            color: rgba(193, 182, 217, 0.74);
+        }
+        .abyss-progress-status {
+            color: rgba(149, 130, 189, 0.72);
+            text-align: right;
         }
         .abyss-progress-track {
-            width: 100%;
-            height: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 2px;
+            width: calc(100% + 10px);
+            margin-right: -10px;
+            height: 15px;
+            background:
+                linear-gradient(180deg, rgba(14, 12, 18, 0.98), rgba(3, 3, 5, 0.98));
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%);
             overflow: hidden;
             position: relative;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(169, 152, 202, 0.12);
+            box-shadow:
+                inset 0 0 0 1px rgba(255, 255, 255, 0.015),
+                inset 0 16px 18px rgba(255, 255, 255, 0.012),
+                inset 0 -14px 18px rgba(0, 0, 0, 0.58),
+                0 10px 18px rgba(0, 0, 0, 0.28);
+        }
+        .abyss-progress-track::before {
+            content: "";
+            position: absolute;
+            inset: -120% -4% -100%;
+            background:
+                radial-gradient(circle at 12% 52%, rgba(0, 0, 0, 0.74) 0 9%, transparent 24%),
+                radial-gradient(circle at 45% 25%, rgba(18, 13, 29, 0.78) 0 10%, transparent 24%),
+                radial-gradient(circle at 78% 58%, rgba(0, 0, 0, 0.7) 0 11%, transparent 25%);
+            opacity: 0.9;
+            filter: blur(12px);
+            animation: abyss-track-smoke 12s linear infinite;
+        }
+        .abyss-progress-track::after {
+            content: "";
+            position: absolute;
+            inset: 2px;
+            background:
+                repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 14px, transparent 14px 24px),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 40%, rgba(0, 0, 0, 0.2));
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+        .abyss-progress-track-line {
+            position: absolute;
+            left: 8px;
+            right: 8px;
+            top: 50%;
+            height: 1px;
+            transform: translateY(-50%);
+            background: linear-gradient(90deg, transparent, rgba(183, 169, 214, 0.16), transparent);
+            opacity: 0.72;
+            z-index: 1;
+            pointer-events: none;
         }
         .abyss-progress-fill {
             height: 100%;
             width: 0%;
-            background-image: repeating-linear-gradient(
-                90deg,
-                #ff3b1f,
-                #ff3b1f 6px,
-                transparent 6px,
-                transparent 9px
-            );
-            box-shadow: 0 0 15px rgba(255, 59, 31, 0.6);
-            transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2;
+            clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 10px 50%);
+            background:
+                linear-gradient(90deg, #0e0a14 0%, #21162d 24%, #3c2853 56%, #5f477f 100%);
+            box-shadow:
+                0 0 26px rgba(105, 81, 143, 0.2),
+                inset 0 0 10px rgba(255, 255, 255, 0.05),
+                inset 0 -10px 16px rgba(0, 0, 0, 0.4);
+            transition: width 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .abyss-progress-fill::before {
+            content: "";
+            position: absolute;
+            inset: -120% -10% -110%;
+            background:
+                radial-gradient(circle at 18% 54%, rgba(0, 0, 0, 0.58) 0 8%, transparent 24%),
+                radial-gradient(circle at 50% 24%, rgba(15, 11, 22, 0.62) 0 10%, transparent 24%),
+                radial-gradient(circle at 84% 56%, rgba(0, 0, 0, 0.54) 0 8%, transparent 24%);
+            opacity: 0.84;
+            filter: blur(10px);
+            animation: abyss-fill-smoke 10s linear infinite;
+        }
+        .abyss-progress-fill::after {
+            content: "";
+            position: absolute;
+            top: 2px;
+            right: 0;
+            bottom: 2px;
+            width: 16px;
+            border-radius: 999px;
+            background:
+                linear-gradient(180deg, rgba(214, 205, 234, 0.18), rgba(137, 115, 179, 0.02)),
+                radial-gradient(circle at 50% 50%, rgba(191, 177, 220, 0.24), transparent 72%);
+            box-shadow:
+                0 0 16px rgba(123, 100, 164, 0.24),
+                0 0 30px rgba(11, 9, 16, 0.4);
+            opacity: 0.86;
         }
         .abyss-progress-text {
-            margin: 6px 0 0;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 10px;
+            position: relative;
+            z-index: 1;
+            margin: 7px 0 0;
+            font-family: var(--font-ui);
+            font-size: 9px;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #ff3b1f;
+            letter-spacing: 0.24em;
+            color: rgba(184, 172, 205, 0.9);
             text-align: left;
             font-weight: 700;
+            text-shadow: 0 0 14px rgba(105, 81, 143, 0.08);
+        }
+        @keyframes abyss-progress-smoke {
+            0% { transform: translateX(-8%) translateY(0) scale(1); }
+            50% { transform: translateX(6%) translateY(-2%) scale(1.06); }
+            100% { transform: translateX(-8%) translateY(0) scale(1); }
+        }
+        @keyframes abyss-track-smoke {
+            0% { transform: translateX(-6%) scale(1); }
+            50% { transform: translateX(6%) scale(1.08); }
+            100% { transform: translateX(-6%) scale(1); }
+        }
+        @keyframes abyss-fill-smoke {
+            0% { transform: translateX(-7%) scale(1); }
+            50% { transform: translateX(7%) scale(1.08); }
+            100% { transform: translateX(-7%) scale(1); }
+        }
+        @media (max-width: 720px) {
+            .abyss-progress {
+                padding: 7px 0 0;
+            }
+            .abyss-progress-frame {
+                width: 100vw;
+                padding: 9px 8px 10px 34px;
+            }
+            .abyss-progress-head {
+                margin-bottom: 5px;
+            }
+            .abyss-progress-kicker,
+            .abyss-progress-status,
+            .abyss-progress-text {
+                letter-spacing: 0.16em;
+            }
+            .abyss-progress-text {
+                font-size: 8px;
+            }
+            .abyss-progress-sigil {
+                left: 10px;
+                width: 16px;
+                height: 16px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="abyss-progress" id="abyss-progress" aria-live="polite">
-        <div class="abyss-progress-track">
-            <div class="abyss-progress-fill" id="abyss-progress-fill"></div>
+        <div class="abyss-progress-frame">
+            <div class="abyss-progress-sigil" aria-hidden="true"></div>
+            <div class="abyss-progress-head" aria-hidden="true">
+                <p class="abyss-progress-kicker">Arquivo Sombrio</p>
+                <p class="abyss-progress-status">Ritual de Coleta</p>
+            </div>
+            <div class="abyss-progress-track">
+                <div class="abyss-progress-track-line" aria-hidden="true"></div>
+                <div class="abyss-progress-fill" id="abyss-progress-fill"></div>
+            </div>
+            <p class="abyss-progress-text" id="abyss-progress-text">Fragmentos nas sombras... 0/10</p>
         </div>
-        <p class="abyss-progress-text" id="abyss-progress-text">Baixando sombras... 0%</p>
     </div>
+    <div class="shadow-toast" id="shadow-toast" aria-live="polite"></div>
+    <div class="shadow-chase-status" id="shadow-chase-status" aria-live="polite"></div>
 
     <img
         id="dvd-gif"
@@ -71,6 +294,25 @@
 
     <div class="ambient-glow ambient-glow-left"></div>
     <div class="ambient-glow ambient-glow-right"></div>
+    <div class="cursor-reveal-layer" aria-hidden="true">
+        <p class="cursor-reveal-whisper cursor-reveal-whisper-a">
+            O nono ciclo nao chegou como prometido... foi silenciado antes de nascer.<br>
+            Os ventos mudaram, e aquilo que deveria comecar... apenas foi empurrado para alem do veu.<br>
+            Mas nem tudo se perdeu no tempo.<br><br>
+            Ha um fragmento esquecido, escondido onde poucos olham.<br>
+            Um pergaminho aguarda, guardando aquilo que foi quebrado.<br>
+            Somente quem souber onde procurar... encontrara o que o mes 09 tentou esconder.
+        </p>
+        <p class="cursor-reveal-whisper cursor-reveal-whisper-b">
+            O sexto dia nao foi cancelado... apenas reescrito.<br>
+            O tempo nao falhou - ele foi interrompido.<br><br>
+            Quando o silencio pesar... escute.<br>
+            Na terceira badalada do sino, o que estava oculto comecara a se revelar.<br>
+            Nem antes. Nem depois.<br><br>
+            Quem esperar... vera.<br>
+            Quem ignorar... permanecera no escuro.
+        </p>
+    </div>
     <div id="runaway-bounds" aria-hidden="true"></div>
 
     <main class="container">
@@ -78,24 +320,29 @@
         <h1>SH<span id="shadows-a-trigger" class="shadows-a" role="button" tabindex="0" aria-label="Abrir alerta">A</span>DOWS <span class="title-o-wrap"><span id="chess-trigger" class="title-o" role="button" tabindex="0" aria-label="Abrir xadrez">O</span>F</span> THE <span id="abyss-trigger" style="cursor: pointer;">ABYSS</span><button id="copyright-trigger" class="copyright-trigger" type="button" aria-label="Abrir pergaminho">©</button></h1>
         <h2>em breve</h2>
 
-        <a class="launch-link" href="#" aria-label="Acompanhar lancamento">
-            Acompanhar lancamento
-        </a>
+        <div class="hero-actions">
+            <a class="launch-link" href="#" aria-label="Acompanhar lancamento">
+                Acompanhar lancamento
+            </a>
+            <a class="launch-link launch-link-secondary" href="bots.html" aria-label="Abrir pagina sobre os bots">
+                Sobre os bots
+            </a>
+        </div>
 
         <div id="countdown">
-            <div class="time">
+            <div class="time" id="countdown-days-card" data-countdown-unit="days" role="button" tabindex="0" aria-label="Bloco de dias">
                 <span id="days"></span>
                 <p>Dias</p>
             </div>
-            <div class="time">
+            <div class="time" id="countdown-hours-card" data-countdown-unit="hours" role="button" tabindex="0" aria-label="Bloco de horas">
                 <span id="hours"></span>
                 <p>Horas</p>
             </div>
-            <div class="time">
+            <div class="time" id="countdown-minutes-card" data-countdown-unit="minutes" role="button" tabindex="0" aria-label="Bloco de minutos">
                 <span id="minutes"></span>
                 <p>Minutos</p>
             </div>
-            <div class="time">
+            <div class="time" id="countdown-seconds-card" data-countdown-unit="seconds" role="button" tabindex="0" aria-label="Bloco de segundos">
                 <span id="seconds"></span>
                 <p>Segundos</p>
             </div>
@@ -131,8 +378,24 @@
             <input id="secret-code-input" type="text" placeholder="..." autocomplete="off" spellcheck="false">
             <button id="secret-code-submit" type="button">Enviar</button>
         </div>
+        <p class="secret-access-hint" id="secret-access-hint">as sombras escutam</p>
         <p id="secret-code-feedback" aria-live="polite"></p>
     </footer>
+
+    <aside class="fragment-inventory" id="fragment-inventory" aria-label="Inventario de fragmentos">
+        <div class="fragment-inventory-head">
+            <p class="fragment-inventory-kicker">Arquivo das sombras</p>
+            <p class="fragment-inventory-count" id="fragment-inventory-count">0/10</p>
+        </div>
+        <label class="fragment-assembly-label" for="invite-code-input">Montagem do convite</label>
+        <div class="fragment-assembly-row">
+            <input id="invite-code-input" type="text" placeholder="convite quebrado" autocomplete="off" spellcheck="false">
+            <button id="invite-code-submit" type="button">Abrir</button>
+        </div>
+        <p class="invite-code-feedback" id="invite-code-feedback" aria-live="polite"></p>
+        <div class="fragment-grid" id="fragment-grid"></div>
+        <p class="fragment-inventory-note" id="fragment-inventory-note">toque um selo</p>
+    </aside>
 
     <section class="video-modal" id="video-modal" aria-hidden="true">
         <div class="video-modal-backdrop" data-close-modal></div>
@@ -205,7 +468,22 @@
         <div class="parchment-modal-backdrop" data-close-parchment></div>
         <div class="parchment-scroll" role="dialog" aria-modal="true" aria-labelledby="parchment-text">
             <button class="parchment-close" type="button" data-close-parchment aria-label="Fechar">x</button>
-            <p class="parchment-text" id="parchment-text"><span class="parchment-typing">100% oliginal</span></p>
+            <p class="parchment-text" id="parchment-text">
+                <span class="parchment-typing">100% oliginal</span>
+            </p>
+            <div class="parchment-secret" id="parchment-secret" aria-hidden="true">
+                <span class="parchment-secret-line">O tempo nao corre como voce pensa... ele observa.</span>
+                <span class="parchment-secret-line">Ha um ponto exato onde tudo se alinha.</span>
+                <span class="parchment-secret-line">Nem antes. Nem depois.</span>
+                <span class="parchment-secret-line">Quando o contador marcar 09 minutos... e 06 segundos...</span>
+                <span class="parchment-secret-line">o veu se tornara instavel.</span>
+                <span class="parchment-secret-line">Permaneca. Observe. Nao desvie o olhar.</span>
+                <span class="parchment-secret-line">Alguns segredos so se revelam para aqueles que sabem esperar.</span>
+            </div>
+            <div class="parchment-hold-track" aria-hidden="true">
+                <span class="parchment-hold-fill" id="parchment-hold-fill"></span>
+            </div>
+            <p class="parchment-hold-hint" id="parchment-hold-hint">segure o pergaminho por 3 segundos</p>
         </div>
     </section>
 
@@ -248,7 +526,7 @@
     <div id="random-photo-layer" aria-hidden="true">
         <img
             id="random-photo"
-            src="assets/foto-aleatoria.png"
+            src="assets/LOGO%20SOA2.png"
             alt="Foto aleatoria"
         >
     </div>
